@@ -534,6 +534,8 @@ function AgentChatPanel() {
       for (let i = 0; i < bashCount; i++) (window as any).__goobsProgressionEvent?.("tool_exec_bash")
       const buildPairs = Math.min(writeCount, bashCount)
       for (let i = 0; i < buildPairs; i++) (window as any).__goobsProgressionEvent?.("tool_build_script")
+
+      setAgentAnimation(selectedAgentId, "celebrate")
     } catch {
       setChatLogs((prev) => ({
         ...prev,
@@ -541,7 +543,6 @@ function AgentChatPanel() {
       }))
     } finally {
     setSending(false)
-    setAgentAnimation(selectedAgentId, "idle")
   }
   }
 

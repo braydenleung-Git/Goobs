@@ -36,7 +36,7 @@ function AgentCharacter({
   instanceId: string
   position: [number, number, number]
 }) {
-  const { agents, agentMeta, selectAgent, selectedInstanceId, setInstanceAnimation, setInstancePosition } = useRuntimeState()
+  const { agents, agentMeta, selectAgent, selectedInstanceId, setInstanceAnimation, setInstancePosition, setTargetPosition } = useRuntimeState()
   const groupRef = useRef<THREE.Group>(null)
   const agent = agents.find((a) => a.instanceId === instanceId)
   const meta = agentMeta[agentId]
@@ -44,6 +44,7 @@ function AgentCharacter({
   const isSelected = selectedInstanceId === instanceId
   const target = agent?.targetPosition
   const entryRef = useRef<number | null>(null)
+  const originalPositionRef = useRef(position)
 
   const stateRef = useRef(state)
   stateRef.current = state
@@ -52,6 +53,7 @@ function AgentCharacter({
   const idleLongInterruptedRef = useRef(false)
   const prevSelectedRef = useRef(isSelected)
   const arrivedRef = useRef(false)
+  const returningHomeRef = useRef(false)
   const posThrottleRef = useRef(0)
 
   if (entryRef.current === null) entryRef.current = Date.now()
@@ -108,9 +110,12 @@ function AgentCharacter({
     if (finishedState === "attention_start") {
       setInstanceAnimation(instanceId, "attention_loop")
     } else if (finishedState === "celebrate" || finishedState === "error") {
-      setInstanceAnimation(instanceId, "idle")
+      setTargetPosition(instanceId, originalPositionRef.current)
+      returningHomeRef.current = true
+      arrivedRef.current = false
+      setInstanceAnimation(instanceId, "walking")
     }
-  }, [instanceId, setInstanceAnimation])
+  }, [instanceId, setInstanceAnimation, setTargetPosition])
 
   // Movement + rotation + spawn scale + throttled position updates
   useFrame((_, delta) => {
@@ -135,7 +140,12 @@ function AgentCharacter({
         cur.x = target[0]
         cur.z = target[2]
         arrivedRef.current = true
-        setInstanceAnimation(instanceId, "sitting")
+        if (returningHomeRef.current) {
+          returningHomeRef.current = false
+          setInstanceAnimation(instanceId, "idle")
+        } else {
+          setInstanceAnimation(instanceId, "sitting")
+        }
         setInstancePosition(instanceId, [cur.x, 0, cur.z])
       }
       return
