@@ -85,12 +85,12 @@ Final:
 
 ### T2: Define Prisma Schema and Migrations
 
-**What**: Create Prisma models for provider config, agents, challenge runs, progress, and reward events.
+**What**: Create Prisma models for provider config, enriched agents, challenge runs, progress, workstation state, and reward events.
 **Where**: `prisma/schema.prisma`, `prisma/migrations/*`
 **Depends on**: T1
 **Reuses**: Prisma SQLite conventions
 **Owner**: You + AI
-**Requirement**: MVP-01, MVP-08, MVP-12, MVP-13
+**Requirement**: MVP-01, MVP-08, MVP-12, MVP-13, MVP-14, MVP-15, MVP-17, MVP-18
 
 **Tools**:
 
@@ -99,7 +99,7 @@ Final:
 
 **Done when**:
 
-- [ ] All planned MVP entities are modeled
+- [ ] All planned MVP entities are modeled including agent skills/tools/color and workstation unlock state
 - [ ] Migration applies successfully
 - [ ] Build passes: `npm run build`
 
@@ -224,12 +224,12 @@ Final:
 
 ### T7: Create Agents API Routes
 
-**What**: Add `GET/POST/PATCH /api/agents` for user-built agent CRUD.
+**What**: Add `GET/POST/PATCH /api/agents` for user-built agent CRUD with skills, tools, and model color fields.
 **Where**: `src/app/api/agents/route.ts`, `src/app/api/agents/route.integration.test.ts`
 **Depends on**: T3
 **Reuses**: Prisma models for AgentProfile
 **Owner**: You + AI
-**Requirement**: MVP-01
+**Requirement**: MVP-01, MVP-18
 
 **Tools**:
 
@@ -239,7 +239,7 @@ Final:
 **Done when**:
 
 - [ ] Agents can be created, listed, and updated
-- [ ] Input validation prevents malformed prompt/model payloads
+- [ ] Input validation prevents malformed prompt/model/skills/tools/color payloads
 - [ ] Gate check passes: `npm run test && npm run build`
 - [ ] Test count: >= baseline + 1 integration suite passes (no silent deletions)
 
@@ -295,7 +295,8 @@ Final:
 **Done when**:
 
 - [ ] `listModels` supports provider endpoint response parsing
-- [ ] Empty/error model lists fall back to `deepseek-v4-flash`
+- [ ] Empty/error model lists fall back to `OpenCode/deepseek-v4-flash`
+- [ ] Model normalization includes capability tags used by workstation routing (at minimum image-capable flag)
 - [ ] Chat run path returns normalized output payload
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
@@ -309,12 +310,12 @@ Final:
 
 ### T10: Implement 3-Challenge Catalog
 
-**What**: Define challenge metadata, prompts, XP, and evaluation config for 3 shipped challenges.
+**What**: Define challenge metadata, prompts, XP, workstation targets, and evaluation config for 3 shipped challenges.
 **Where**: `src/lib/challenges/catalog.ts`, `src/lib/challenges/catalog.test.ts`
 **Depends on**: T1
 **Reuses**: Challenge names and rewards from `AGENT_WORKSHOP.md`
 **Owner**: You + AI
-**Requirement**: MVP-04
+**Requirement**: MVP-04, MVP-16
 
 **Tools**:
 
@@ -324,7 +325,7 @@ Final:
 **Done when**:
 
 - [ ] Catalog exposes `change-prompt`, `code-writer`, `multi-tool`
-- [ ] XP and rubric configs are defined per challenge
+- [ ] XP, workstation target, and rubric configs are defined per challenge
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
 
@@ -393,12 +394,12 @@ Final:
 
 ### T13: Implement Progression Service
 
-**What**: Implement XP/level/unlock application with idempotent reward event guard.
+**What**: Implement XP/level/unlock application with idempotent reward event guard and workstation unlock progression.
 **Where**: `src/lib/progression/progression-service.ts`, `src/lib/progression/progression-service.test.ts`
 **Depends on**: T3, T10
 **Reuses**: Challenge reward config + Prisma event table
 **Owner**: You + AI
-**Requirement**: MVP-08
+**Requirement**: MVP-08, MVP-17
 
 **Tools**:
 
@@ -409,7 +410,7 @@ Final:
 
 - [ ] XP and level update logic is deterministic
 - [ ] Duplicate reward apply for same run is prevented
-- [ ] Unlock payload updates are persisted
+- [ ] Unlock payload updates are persisted including workstation unlock state
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
 
@@ -422,12 +423,12 @@ Final:
 
 ### T14: Implement Challenge Runner Service
 
-**What**: Orchestrate run lifecycle, model call, and runtime state emission payload.
+**What**: Orchestrate run lifecycle, workstation assignment, movement events, model call, and runtime state emission payload.
 **Where**: `src/lib/runs/challenge-runner.ts`, `src/lib/runs/challenge-runner.test.ts`
 **Depends on**: T9, T10
 **Reuses**: OpenAI client + challenge catalog
 **Owner**: You + AI
-**Requirement**: MVP-04, MVP-05
+**Requirement**: MVP-04, MVP-05, MVP-16
 
 **Tools**:
 
@@ -437,6 +438,8 @@ Final:
 **Done when**:
 
 - [ ] Runner emits lifecycle-compatible states for UI/3D adapter
+- [ ] Runner emits workstation assignment and movement start/arrival events
+- [ ] Image-generation workstation runs are blocked unless selected model is image-capable
 - [ ] Runner returns normalized attempt artifact payload
 - [ ] Error path maps to `Error` state with recoverable message
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
@@ -513,7 +516,7 @@ Final:
 **Depends on**: T6, T7, T8, T9
 **Reuses**: Provider and agents APIs
 **Owner**: Shared (You + Teammate)
-**Requirement**: MVP-01, MVP-02, MVP-03, MVP-09, MVP-13
+**Requirement**: MVP-01, MVP-02, MVP-03, MVP-09, MVP-13, MVP-18
 
 **Tools**:
 
@@ -523,7 +526,9 @@ Final:
 **Done when**:
 
 - [ ] User can save provider config and agent config from UI
+- [ ] Agent config supports skills, tools, and model color
 - [ ] Model picker reflects discovered/fallback models
+- [ ] UI enforces image-capable model selection when agent is marked for image generation tasks
 - [ ] Prebuilt agent can be loaded and edited
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
@@ -537,12 +542,12 @@ Final:
 
 ### T18: Build Challenge Execution UI
 
-**What**: Build challenge selector + run trigger UI with runtime state indicator and output display.
+**What**: Build challenge selector + run trigger UI with workstation routing indicator, runtime state indicator, and output display.
 **Where**: `src/components/workshop/challenge-runner-panel.tsx`, `src/components/workshop/challenge-runner-panel.test.tsx`
 **Depends on**: T15
 **Reuses**: Challenge run API response shape
 **Owner**: You + AI
-**Requirement**: MVP-04, MVP-05
+**Requirement**: MVP-04, MVP-05, MVP-16
 
 **Tools**:
 
@@ -553,6 +558,7 @@ Final:
 
 - [ ] User can run each shipped challenge from UI
 - [ ] Runtime state badge updates during run lifecycle
+- [ ] Assigned workstation and movement progress are visible during run
 - [ ] Output text and completion payload render correctly
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
@@ -566,12 +572,12 @@ Final:
 
 ### T19: Build Evaluation + Progress UI
 
-**What**: Build evaluation summary, XP/level HUD, unlock feed, and run history panel.
+**What**: Build evaluation summary, XP/level HUD, workstation unlock feed, and run history panel.
 **Where**: `src/components/workshop/progress-and-history.tsx`, `src/components/workshop/progress-and-history.test.tsx`
 **Depends on**: T15
 **Reuses**: Challenge run result and progression snapshot payloads
 **Owner**: You + AI
-**Requirement**: MVP-06, MVP-07, MVP-08, MVP-12
+**Requirement**: MVP-06, MVP-07, MVP-08, MVP-12, MVP-17
 
 **Tools**:
 
@@ -582,6 +588,7 @@ Final:
 
 - [ ] Pass/fail and score/rationale are visible after each run
 - [ ] XP/level/unlocks update immediately on pass
+- [ ] Workstation unlock status updates immediately on qualifying pass
 - [ ] Recent run history is displayed and selectable
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
@@ -595,12 +602,12 @@ Final:
 
 ### T20: Implement Runtime State Adapter
 
-**What**: Create adapter from app run lifecycle events to fixed 3D states (`Idle/Thinking/Typing/Celebrate/Error`).
+**What**: Create adapter from app run lifecycle/workstation events to fixed 3D states (`Idle/Thinking/Typing/Celebrate/Error`).
 **Where**: `src/components/scene/runtime-state-adapter.ts`, `src/components/scene/runtime-state-adapter.test.ts`
 **Depends on**: T18
-**Reuses**: Challenge runner panel event model
+**Reuses**: Challenge runner panel event model and workstation assignment events
 **Owner**: You + AI
-**Requirement**: MVP-05
+**Requirement**: MVP-05, MVP-16
 
 **Tools**:
 
@@ -609,7 +616,7 @@ Final:
 
 **Done when**:
 
-- [ ] All lifecycle transitions map to one of 5 contract states
+- [ ] All lifecycle and workstation movement transitions map to one of 5 contract states
 - [ ] Failure and recovery transitions return to `Idle`
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
@@ -621,14 +628,14 @@ Final:
 
 ---
 
-### T21: Wire 3D Animation Hooks to Runtime States
+### T21: Wire Scene and 3D Animation Hooks
 
-**What**: Connect teammate-provided animation clips/controllers to runtime adapter contract.
+**What**: Connect teammate-provided scene layout and animation clips/controllers to runtime adapter and workstation contract.
 **Where**: `src/components/scene/agent-scene.tsx` (and teammate asset hook files)
 **Depends on**: T20
 **Reuses**: Runtime state adapter + teammate animation assets
 **Owner**: Teammate (primary) + You support
-**Requirement**: MVP-05
+**Requirement**: MVP-05, MVP-14, MVP-15, MVP-16
 
 **Tools**:
 
@@ -637,7 +644,10 @@ Final:
 
 **Done when**:
 
+- [ ] Scene starts as blank isometric plane and shows spawned agents
+- [ ] Idle agents continuously play idle animation
 - [ ] Each runtime state visibly triggers intended animation behavior
+- [ ] Agents route to mapped workstation and play workstation-specific animation
 - [ ] Missing clip fallback does not crash scene
 - [ ] Build passes: `npm run build`
 
@@ -655,7 +665,7 @@ Final:
 **Depends on**: T16, T17, T18, T19
 **Reuses**: Reset API and live run metrics
 **Owner**: Shared (You + Teammate)
-**Requirement**: MVP-10, MVP-11
+**Requirement**: MVP-10, MVP-11, MVP-15
 
 **Tools**:
 
@@ -666,7 +676,7 @@ Final:
 
 - [ ] Reset control triggers non-destructive reset endpoint
 - [ ] Fallback guidance is visible for provider/model failures
-- [ ] Criteria panel clearly maps app features to all 4 judging categories
+- [ ] Criteria panel clearly maps app features (scene growth and workstations included) to all 4 judging categories
 - [ ] Gate check passes: `npm run lint && npm run test:unit`
 - [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
 

@@ -15,26 +15,35 @@
 **Workshop Runtime Shell** - PLANNED
 
 - Boot local app with deterministic seed/reset controls
-- Show workshop scene, challenge panel, and agent control surface
+- Show blank isometric workshop plane, challenge panel, and agent control surface
 - Persist core state needed for reliable live demo
 
 **Agent Creation + Configuration** - PLANNED
 
-- Create user-defined agent (name, prompt, model)
+- Create user-defined agent (skills, tools, prompt, model, model color)
+- Support dedicated image-generation agents with capability-aware model selection
 - Load prebuilt example agents for fast demo setup
 - Persist and edit agent configuration
 
 **LLM Orchestration (OpenAI-Compatible)** - PLANNED
 
 - Pull model list from endpoint and allow model selection
+- Use `OpenCode/deepseek-v4-flash` fallback when discovery fails
 - Execute challenge runs via chat completion endpoint
 - Stream/return outputs and runtime events to UI
 
 **3D State Integration** - PLANNED
 
 - Bind runtime states to animation contract (Idle/Thinking/Typing/Celebrate/Error)
-- Surface challenge lifecycle transitions in-scene
+- Spawn agents into scene and maintain idle animation behavior
+- Route agents to workstation targets and play task-specific animations
 - Keep UI and 3D state synchronized
+
+**Workstation System + Scene Growth** - PLANNED
+
+- Implement workstation anchors for computer, drawing tablet, whiteboard, and book
+- Map task types to workstation routing rules
+- Unlock additional workstations via progression milestones
 
 **Challenge Engine (3 Challenges)** - PLANNED
 

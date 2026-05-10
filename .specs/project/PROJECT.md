@@ -6,7 +6,7 @@
 
 ## Goals
 
-- [ ] Deliver a stable local demo where a user creates an agent, runs 3 challenges, and sees live 3D + progression feedback in under 90 seconds.
+- [ ] Deliver a stable local demo where a user creates an agent, runs 3 challenges, and sees live 3D workshop behavior (spawn, movement, workstation animations) plus progression feedback in under 90 seconds.
 - [ ] Show technical depth across 3D rendering, LLM orchestration, and gamification with automatic challenge evaluation.
 - [ ] Map each judging criterion to at least one clear demo moment.
 
@@ -31,12 +31,16 @@
 
 **v1 includes:**
 
-- User-built agent creation (name, system prompt, model choice)
+- User-built agent creation (skills, tools, system prompt, model choice, model color)
 - Global provider configuration (base URL + encrypted API key)
+- Model discovery with fallback to `OpenCode/deepseek-v4-flash`
 - Optional prebuilt agent examples for demo acceleration
 - 3 playable challenges: Change Prompt, Code Writer, Multi-Tool
 - Hybrid automatic challenge evaluation (deterministic checks + LLM rubric)
 - XP, level, and unlocks for shipped challenges
+- Blank isometric workshop plane where created agents spawn and idle
+- Workstation routing and animations: computer (coding), drawing tablet (image generation), whiteboard (planning), book (writing)
+- Growing scene with workstation unlock progression
 - 3D runtime state contract: Idle, Thinking, Typing, Celebrate, Error
 - Local-laptop demo workflow with reset controls
 

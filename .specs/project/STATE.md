@@ -13,7 +13,7 @@
 - D-003: Persist state in SQLite for demo reliability across refresh/restart.
 - D-004: Run demo primarily on local laptop.
 - D-005: Support OpenAI-compatible endpoints using model discovery (`/models`) and model selection at runtime.
-- D-006: Primary supported model fallback is `deepseek-v4-flash` if model discovery fails.
+- D-006: Primary supported model fallback is `OpenCode/deepseek-v4-flash` if model discovery fails.
 - D-007: Animation state contract is fixed to Idle/Thinking/Typing/Celebrate/Error.
 - D-008: Progression in MVP includes real XP + level + unlocks for 3 shipped challenges.
 - D-009: Global provider API key is persisted encrypted in DB using app-level AES-GCM with env master key.
@@ -21,6 +21,11 @@
 - D-011: Gate commands are fixed: quick=`npm run lint && npm run test:unit`, full=`npm run test && npm run build`.
 - D-012: Challenge completion policy is strict: deterministic pass AND rubric minimum are both required.
 - D-013: Demo reset preserves saved agents, progress, and global provider settings.
+- D-014: Frontend scene starts as blank isometric plane; created agents spawn into scene and idle.
+- D-015: Workstations are physical task targets (computer, drawing tablet, whiteboard, book); agents walk to assigned station before task execution.
+- D-016: Scene growth is progression-driven through workstation unlocks.
+- D-017: Workstation mapping is fixed for MVP: computer=coding, drawing-tablet=image generation, whiteboard=planning/brainstorming, book=writing.
+- D-018: Image-generation tasks require image-capable model selection.
 
 ## Open Questions
 
