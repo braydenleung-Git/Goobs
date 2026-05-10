@@ -54,11 +54,10 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: { toasts:
   return (
     <>
       <div
-        className="fixed z-30 flex flex-col gap-2"
+        className="fixed z-30 flex flex-col gap-2 transition-all duration-200 ease-out"
         style={{
           bottom: "1.5rem",
           left: sidebarOpen ? "17rem" : "1rem",
-          transition: "left 0.2s ease-out",
         }}
       >
         {toasts.length > 0 && (
@@ -77,7 +76,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: { toasts:
                 <rect x="9" y="3" width="6" height="4" rx="1" />
               </svg>
             </div>
-            <span className="font-display text-sm font-bold text-text">Walkthrough</span>
+            <span className="font-display text-sm font-bold text-text">Challenges</span>
             <span className="ml-auto rounded-full bg-mauve/15 px-2 py-0.5 font-display text-xs font-bold text-mauve">
               {completedCount}/{totalSteps}
             </span>

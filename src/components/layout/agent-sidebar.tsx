@@ -43,27 +43,22 @@ export function AgentSidebar({ onSidebarChange }: Props) {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-40 flex items-center justify-start group cursor-pointer"
+        className="fixed left-0 top-0 z-40 cursor-pointer"
         style={{ paddingTop: "4.5rem", height: "100%", width: "20px" }}
         onMouseEnter={() => setHovered(true)}
       >
-        <div
-          className="flex flex-col items-center justify-center gap-1 rounded-r-lg transition-all"
+        <div className="absolute rounded-r-lg glass flex flex-col items-center justify-center transition-all duration-200 ease-out"
           style={{
+            top: "3rem",
             width: "20px",
-            height: "100px",
-            background: hovered
-              ? "linear-gradient(90deg, rgba(137,180,250,0.15), transparent)"
-              : "linear-gradient(90deg, rgba(49,50,68,0.6), transparent)",
-            borderRight: hovered ? "1px solid rgba(137,180,250,0.15)" : "1px solid rgba(205,214,244,0.05)",
-            transition: "all 0.2s ease-out",
+            height: "90px",
+            borderLeft: "none",
           }}
         >
           <svg
             width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth="2.5" strokeLinecap="round"
-            className={hovered ? "text-blue/60" : "text-subtext/20"}
-            style={{ transition: "color 0.2s" }}
+            className={hovered ? "text-blue/60" : "text-subtext/30"}
           >
             <path d="M9 18l6-6-6-6" />
           </svg>
