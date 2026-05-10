@@ -301,6 +301,7 @@ function WorkstationMarker({
           scale={[0.0025, 0.0025, 0.0025]}
           position={[0, 0, 0]}
           rotation={[0, Math.PI / 2, 0]}
+          materialColors={{ skin: "#d4a574", shirt: "#d4a574", pants: "#d4a574" }}
         />
       ) : (
         <>
