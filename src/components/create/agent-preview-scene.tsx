@@ -28,7 +28,7 @@ export function AgentPreviewScene({ skinColor, shirtColor, pantsColor }: Props) 
   return (
     <div className="h-full w-full overflow-hidden rounded-2xl">
       <Canvas
-        camera={{ position: [2.5, 2, 3.5], fov: 35 }}
+        camera={{ position: [1.5, 1.2, 2], fov: 35 }}
         gl={{ antialias: true }}
         style={{ height: "100%", width: "100%" }}
         onCreated={({ gl }) => {
