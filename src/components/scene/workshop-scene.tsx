@@ -237,52 +237,34 @@ function WorkstationMarker({
   position,
   label,
   color,
-  unlockedWorkstations,
 }: {
   position: [number, number, number]
   label: string
   color: string
-  unlockedWorkstations: string[]
 }) {
-  const unlockKey = label.toLowerCase().replace(/\s+/g, "-")
-  const unlocked = unlockKey === "computer" || unlockedWorkstations.includes(unlockKey)
-  const isComputer = label === "Computer"
+  const rotation: [number, number, number] = label === "Computer" ? [0, Math.PI / 2, 0]
+    : label === "Drawing Tablet" ? [0, 0, 0]
+    : label === "Whiteboard" ? [0, -Math.PI / 4, 0]
+    : [0, Math.PI / 4, 0]
 
   return (
     <group position={[position[0], 0.01, position[2]]}>
-      {isComputer ? (
-        <FBXModelLoader
-          url="/3d/table.fbx"
-          scale={[0.0025, 0.0025, 0.0025]}
-          position={[0, 0, 0]}
-          rotation={[0, Math.PI / 2, 0]}
-          materialColors={{ skin: "#d4a574", shirt: "#d4a574", pants: "#d4a574" }}
-        />
-      ) : (
-        <>
-          <mesh>
-            <boxGeometry args={[0.6, 0.02, 0.6]} />
-            <meshStandardMaterial color={unlocked ? color : "#45475a"} transparent opacity={unlocked ? 0.8 : 0.2} />
-          </mesh>
-          <mesh position={[0, 0.25, 0]}>
-            <boxGeometry args={[0.4, unlocked ? 0.25 : 0.08, 0.4]} />
-            <meshStandardMaterial color={color} transparent opacity={unlocked ? 0.3 : 0.05} />
-          </mesh>
-        </>
-      )}
-      <Html position={[0, isComputer ? 1.2 : (unlocked ? 0.7 : 0.25), 0]} center className="pointer-events-none" zIndexRange={[1, 2]}>
+      <FBXModelLoader
+        url="/3d/table.fbx"
+        scale={[0.0025, 0.0025, 0.0025]}
+        position={[0, 0, 0]}
+        rotation={rotation}
+        materialColors={{ skin: color, shirt: color, pants: color }}
+      />
+      <Html position={[0, 1.2, 0]} center className="pointer-events-none" zIndexRange={[1, 2]}>
         <div
-          className={`rounded-full px-2.5 py-0.5 font-display text-[10px] font-bold whitespace-nowrap ${
-            unlocked
-              ? "text-text/80"
-              : "text-subtext/30"
-          }`}
+          className="rounded-full px-2.5 py-0.5 font-display text-[10px] font-bold whitespace-nowrap text-text/80"
           style={{
-            background: unlocked ? `${color}15` : "rgba(69, 71, 90, 0.2)",
-            border: unlocked ? `1px solid ${color}20` : "1px solid rgba(69, 71, 90, 0.1)",
+            background: `${color}15`,
+            border: `1px solid ${color}20`,
           }}
         >
-          {unlocked ? label : ""}
+          {label}
         </div>
       </Html>
     </group>
@@ -432,12 +414,6 @@ export function WorkshopScene() {
   const { agents, agentMeta } = useRuntimeState()
   const controlsRef = useRef<any>(null)
 
-  const stored = typeof window !== "undefined" ? localStorage.getItem("goobs-progress") : null
-  let unlockedWorkstations: string[] = ["computer"]
-  if (stored) {
-    try { unlockedWorkstations = JSON.parse(stored).unlockedWorkstations ?? ["computer"] } catch {}
-  }
-
   return (
     <Canvas
       camera={{ position: [8, 8, 8], fov: 45 }}
@@ -473,7 +449,6 @@ export function WorkshopScene() {
           position={ws.position}
           label={ws.label}
           color={ws.color}
-          unlockedWorkstations={unlockedWorkstations}
         />
       ))}
 
