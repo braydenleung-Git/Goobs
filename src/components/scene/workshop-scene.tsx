@@ -155,7 +155,7 @@ function DropCatcher() {
     const ndcY = -((pendingDrop.screenY - rect.top) / rect.height) * 2 + 1
 
     const raycaster = new THREE.Raycaster()
-    raycaster.setFromCamera(new THREE.Vector3(ndcX, ndcY), camera)
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera)
 
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
     const point = new THREE.Vector3()

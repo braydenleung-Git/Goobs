@@ -33,7 +33,7 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
       .then((r) => r.json())
       .then((list: ModelOption[]) => {
         setModels(list)
-        if (list.length > 0 && !list.some((m) => m.id === model)) {
+        if (list.length > 0) {
           setModel(list[0].id)
         }
       })
