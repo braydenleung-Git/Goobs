@@ -220,18 +220,21 @@ function AgentChatPanel() {
   const [message, setMessage] = useState("")
   const [chatLogs, setChatLogs] = useState<Record<string, Array<{ role: "agent" | "user"; text: string }>>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
   const [sending, setSending] = useState(false)
 
   const chatLog = selectedAgentId ? chatLogs[selectedAgentId] ?? [] : []
 
   useEffect(() => {
     if (selectedAgentId) {
+      setProfileLoading(true)
       fetch(`/api/agents?id=${selectedAgentId}`)
         .then((r) => r.json())
-        .then((a) => setProfile(a))
-        .catch(() => setProfile(null))
+        .then((a) => { setProfile(a); setProfileLoading(false) })
+        .catch(() => { setProfile(null); setProfileLoading(false) })
     } else {
       setProfile(null)
+      setProfileLoading(false)
     }
   }, [selectedAgentId])
 
@@ -371,7 +374,11 @@ function AgentChatPanel() {
           </div>
 
           <div className="border-b border-white/5 px-5 py-3 space-y-3">
-            {profile && (
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/10 border-t-mauve" />
+              </div>
+            ) : profile ? (
               <>
                 <div>
                   <div className="font-body text-[10px] text-subtext/40 uppercase tracking-wider mb-1.5">Model</div>
@@ -396,13 +403,13 @@ function AgentChatPanel() {
                   <span className="font-body text-[11px] text-subtext/30">Integration coming soon</span>
                 </div>
               </>
-            )}
+            ) : null}
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
             {chatLog.length === 0 ? (
               <div className="flex h-full items-center justify-center">
-                <p className="font-body text-xs text-subtext/40 text-center px-4">Agent selected. Message them or run a challenge.</p>
+                <p className="font-body text-xs text-subtext text-center px-4">Agent selected. Message them or run a challenge.</p>
               </div>
             ) : (
               chatLog.map((msg, i) => (
