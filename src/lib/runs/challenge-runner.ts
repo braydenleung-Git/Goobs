@@ -46,6 +46,16 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
   events.push("state:walking")
   events.push("state:thinking")
 
+  let systemPrompt = challenge.systemPromptTemplate
+
+  let agentSkills: string[] = []
+  try {
+    agentSkills = JSON.parse(agent.skillsJson || "[]")
+  } catch {}
+  if (agentSkills.length > 0) {
+    systemPrompt += `\n\nAvailable skills: ${agentSkills.join(", ")}. Invoke these skills only when relevant to the task.`
+  }
+
   const runId = crypto.randomUUID()
 
   let outputText = ""
@@ -64,7 +74,7 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
     const agentResult = await runAgent({
       model: input.model,
-      systemPrompt: challenge.systemPromptTemplate,
+      systemPrompt,
       userPrompt: challenge.userPromptTemplate,
       agentId: input.agentId,
       runId,
@@ -81,7 +91,7 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
   } else {
     const llmOutput = await runChatCompletion({
       model: input.model,
-      systemPrompt: challenge.systemPromptTemplate,
+      systemPrompt,
       messages: [{ role: "user", content: challenge.userPromptTemplate }],
     })
 
