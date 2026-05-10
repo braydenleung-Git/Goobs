@@ -31,6 +31,7 @@ function WorkshopContent() {
   const [previewColor, setPreviewColor] = useState("#89b4fa")
   const [showLaunch, setShowLaunch] = useState(true)
   const [toasts, setToasts] = useState<Array<{ id: string; step: (typeof WALKTHROUGH_STEPS)[0]; level: number }>>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const state = getWalkthroughState()
@@ -121,7 +122,7 @@ function WorkshopContent() {
               <WorkshopScene />
             </div>
 
-            <AgentSidebar />
+            <AgentSidebar onSidebarChange={setSidebarOpen} />
             <AgentChatPanel />
 
             {showConfig && (
@@ -140,7 +141,7 @@ function WorkshopContent() {
           <AgentsGrid onAgentCreated={handleAgentCreated} />
         )}
       </div>
-      {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />}
+      {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} sidebarOpen={sidebarOpen} />}
     </div>
   )
 }

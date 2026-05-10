@@ -13,7 +13,11 @@ interface AgentSummary {
   isPrebuilt: boolean
 }
 
-export function AgentSidebar() {
+interface Props {
+  onSidebarChange?: (open: boolean) => void
+}
+
+export function AgentSidebar({ onSidebarChange }: Props) {
   const [agents, setAgents] = useState<AgentSummary[]>([])
   const [hovered, setHovered] = useState(false)
   const [selectedInfo, setSelectedInfo] = useState<string | null>(null)
@@ -24,6 +28,10 @@ export function AgentSidebar() {
       .then(setAgents)
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    onSidebarChange?.(hovered)
+  }, [hovered, onSidebarChange])
 
   const handleDragStart = useCallback((e: React.DragEvent, agentId: string) => {
     e.dataTransfer.setData("text/plain", agentId)
@@ -36,19 +44,29 @@ export function AgentSidebar() {
     <>
       <div
         className="fixed left-0 top-0 z-40 flex items-center justify-start group cursor-pointer"
-        style={{ paddingTop: "4.5rem", height: "100%", width: "28px" }}
+        style={{ paddingTop: "4.5rem", height: "100%", width: "20px" }}
         onMouseEnter={() => setHovered(true)}
       >
-        <div className="flex flex-col items-center gap-1 px-1">
-          <div className="h-20 w-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all" />
+        <div
+          className="flex flex-col items-center justify-center gap-1 rounded-r-lg transition-all"
+          style={{
+            width: "20px",
+            height: "100px",
+            background: hovered
+              ? "linear-gradient(90deg, rgba(137,180,250,0.15), transparent)"
+              : "linear-gradient(90deg, rgba(49,50,68,0.6), transparent)",
+            borderRight: hovered ? "1px solid rgba(137,180,250,0.15)" : "1px solid rgba(205,214,244,0.05)",
+            transition: "all 0.2s ease-out",
+          }}
+        >
           <svg
-            width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="3" strokeLinecap="round"
-            className="text-white/[0.05] group-hover:text-white/[0.12] transition-all"
+            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round"
+            className={hovered ? "text-blue/60" : "text-subtext/20"}
+            style={{ transition: "color 0.2s" }}
           >
             <path d="M9 18l6-6-6-6" />
           </svg>
-          <div className="h-20 w-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all" />
         </div>
       </div>
 

@@ -11,6 +11,7 @@ interface Toast {
 
 interface Props {
   toasts: Toast[]
+  sidebarOpen?: boolean
 }
 
 function DockToast({ toast, onDone }: { toast: Toast; onDone: () => void }) {
@@ -32,7 +33,7 @@ function DockToast({ toast, onDone }: { toast: Toast; onDone: () => void }) {
   )
 }
 
-export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onDismissToast: (id: string) => void }) {
+export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: { toasts: Toast[]; onDismissToast: (id: string) => void; sidebarOpen?: boolean }) {
   const [completed, setCompleted] = useState<string[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
 
@@ -52,7 +53,14 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
 
   return (
     <>
-      <div className="fixed z-30 flex flex-col gap-2" style={{ bottom: "1.5rem", left: "3.5rem" }}>
+      <div
+        className="fixed z-30 flex flex-col gap-2"
+        style={{
+          bottom: "1.5rem",
+          left: sidebarOpen ? "17rem" : "1rem",
+          transition: "left 0.2s ease-out",
+        }}
+      >
         {toasts.length > 0 && (
           <div className="flex flex-col gap-2 mb-2">
             {toasts.map((t) => (
