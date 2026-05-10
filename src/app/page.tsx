@@ -334,6 +334,8 @@ function AgentChatPanel() {
   const [chatLogs, setChatLogs] = useState<Record<string, ChatEntry[]>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
   const [sending, setSending] = useState(false)
+  const sendingRef = useRef(false)
+  sendingRef.current = sending
   const chatSentMapRef = useRef<Record<string, boolean>>({})
   const chatLogKey = selectedInstanceId || selectedAgentId || ""
 
@@ -394,7 +396,7 @@ function AgentChatPanel() {
     })
       .then((r) => r.json())
       .then(({ workstationId }) => {
-        if (workstationId) routeAgent(selectedAgentId, workstationId)
+        if (workstationId && sendingRef.current) routeAgent(selectedAgentId, workstationId)
       })
       .catch(() => {})
 
