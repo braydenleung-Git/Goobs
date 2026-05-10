@@ -15,6 +15,7 @@ const REVERSE_SITTING_DURATION = 1500 // 1.5 seconds for reverse sitting animati
 const TASK_COMPLETION_CHECK_INTERVAL = 5000 // Check for task completion every 5 seconds while working
 const IDLE_TO_STAND_CHANCE = 0.01 // 10% chance per frame to transition from idle to stand
 const STAND_TO_EASTER_EGG_DURATION = 2000 // 2 seconds before transitioning from stand to easter_egg
+const EASTER_EGG_DURATION = 3000 // 3 seconds for easter egg animation before returning to idle
 
 // Custom animation mapping for FBX model NLA strips
 const ANIMATION_MAPPING = {
@@ -56,6 +57,7 @@ function AgentCharacter({
   const taskCompletedRef = useRef<boolean>(false)
   const standStartTimeRef = useRef<number | null>(null)
   const idleRandomCheckRef = useRef<number>(0)
+  const easterEggStartTimeRef = useRef<number | null>(null)
 
   if (entryRef.current === null) entryRef.current = Date.now()
 
@@ -113,6 +115,13 @@ function AgentCharacter({
         standStartTimeRef.current = null
       }
       
+      // Reset easter egg tracking
+      if (state === "easter_egg") {
+        easterEggStartTimeRef.current = Date.now()
+      } else {
+        easterEggStartTimeRef.current = null
+      }
+      
       // Reset idle random check when leaving idle
       if (state !== "idle") {
         idleRandomCheckRef.current = 0
@@ -128,8 +137,8 @@ function AgentCharacter({
       }
     }
 
-    // Handle random idle to stand transition
-    if (state === "idle") {
+    // Handle random idle to stand transition (only if not lying down)
+    if (state === "idle" && !wasIdleLongRef.current) {
       idleRandomCheckRef.current += delta
       // Check every second to reduce performance impact
       if (idleRandomCheckRef.current >= 1) {
@@ -146,6 +155,15 @@ function AgentCharacter({
       if (standDuration >= STAND_TO_EASTER_EGG_DURATION) {
         setAgentAnimation(agentId, "easter_egg")
         standStartTimeRef.current = null
+      }
+    }
+
+    // Handle easter_egg to idle transition
+    if (state === "easter_egg" && easterEggStartTimeRef.current) {
+      const easterEggDuration = Date.now() - easterEggStartTimeRef.current
+      if (easterEggDuration >= EASTER_EGG_DURATION) {
+        setAgentAnimation(agentId, "idle")
+        easterEggStartTimeRef.current = null
       }
     }
 
