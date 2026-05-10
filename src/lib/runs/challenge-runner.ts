@@ -59,7 +59,13 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
     agentSkills = JSON.parse(agent.skillsJson || "[]")
   } catch {}
   if (agentSkills.length > 0) {
-    systemPrompt += `\n\nAvailable skills: ${agentSkills.join(", ")}. Invoke these skills only when relevant to the task.`
+    const blocks = agentSkills.map((s, i) => {
+      const trimmed = s.trim()
+      const firstLine = trimmed.split("\n")[0] || ""
+      const title = firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || `Skill ${i + 1}`
+      return `### ${title}\n\n${trimmed}`
+    })
+    systemPrompt += `\n\nYou have the following skills:\n\n${blocks.join("\n\n")}`
   }
 
   const runId = crypto.randomUUID()
@@ -71,14 +77,9 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
   const hasTools = challenge.availableTools && challenge.availableTools.length > 0
 
-  // always add skill tool awareness when agent has skills
-  if (agentSkills.length > 0) {
-    systemPrompt += `\n\nUse \`view_skills\` to see your full skill definitions and content.`
-  }
-
   if (hasTools) {
     events.push("state:typing")
-    systemPrompt += `\n\nYou have access to additional tools. Use \`write_file\` to create files and \`exec_bash\` to run them. Check existing files with \`read_file\` and \`list_files\` before creating new ones.`
+    systemPrompt += `\n\nDuring this task you can use tools. Use \`write_file\` to create files, \`exec_bash\` to run commands, \`read_file\` to read existing files, and \`list_files\` to see what's in your workspace.`
 
     const registry = new ToolRegistry()
     registry.register(createSkillsTool(input.agentId, agentSkills))

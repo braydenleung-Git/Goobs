@@ -25,18 +25,13 @@ export async function POST(request: NextRequest) {
   let skills: string[] = []
   try { skills = JSON.parse(agent.skillsJson || "[]") } catch {}
   if (skills.length > 0) {
-    const names = skills.map((s) => {
+    const skillBlocks = skills.map((s, i) => {
       const trimmed = s.trim()
-      if (trimmed.startsWith("---")) {
-        const end = trimmed.indexOf("---", 3)
-        if (end !== -1) {
-          const m = trimmed.slice(3, end).match(/^name:\s*(.+)$/m)
-          if (m) return m[1].trim()
-        }
-      }
-      return trimmed.split("\n")[0].replace(/^#\s*/, "") || "Untitled Skill"
+      const firstLine = trimmed.split("\n")[0] || ""
+      const title = firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || `Skill ${i + 1}`
+      return `### ${title}\n\n${trimmed}`
     })
-    systemPrompt += `\n\nAvailable skills: ${names.join(", ")}. Use these skills only when relevant.`
+    systemPrompt += `\n\nYou have the following skills:\n\n${skillBlocks.join("\n\n")}`
   }
 
   const { baseUrl, apiKey } = await getProviderRuntimeConfig()
