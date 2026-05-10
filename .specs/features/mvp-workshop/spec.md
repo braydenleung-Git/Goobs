@@ -100,6 +100,75 @@ Explicitly excluded to prevent scope creep during the 24-hour build.
 
 ---
 
+### P1: Agents Use Sandboxed Tools to Produce Real Artifacts (MVP)
+
+**User Story**: As a player, I want agents to actually write code to files, run bash commands, and produce real execution output so that challenges feel tangible and not just text-based.
+
+**Why P1**: Transforms the challenge loop from "LLM writes text → we evaluate text" into "LLM uses real tools → produces real artifacts". This is the core differentiator for Technical Execution and Innovation judging criteria.
+
+**Acceptance Criteria**:
+
+1. WHEN a challenge enables agent tools THEN the system SHALL provide sandboxed filesystem access (read_file, write_file, list_files) restricted to the agent's workspace directory.
+2. WHEN a challenge enables agent tools THEN the system SHALL provide a sandboxed bash execution tool (exec_bash) that runs commands with a configurable timeout inside the agent's workspace.
+3. WHEN the LLM returns a tool-call request THEN the system SHALL execute the tool in the sandbox, capture the result, and feed it back into the conversation for up to the configured maximum turns.
+4. WHEN a tool call attempts to access a path outside the workspace directory THEN the system SHALL block the operation with an error result.
+5. WHEN a bash command exceeds the timeout limit THEN the system SHALL terminate the process and return a timeout error.
+6. WHEN a challenge run completes THEN the system SHALL include tool call logs and artifact manifests (files created, commands executed) in the run result.
+7. WHEN the OpenAI-compatible endpoint does not support tool calling THEN the system SHALL fall back to single-shot completion without tools.
+
+**Independent Test**: Run Code Writer challenge, verify the agent writes a `.py` file, executes it with `exec_bash`, and the evaluation shows execution results (exit code, stdout).
+
+---
+
+### P1: Evaluation Considers Execution Artifacts (MVP)
+
+**User Story**: As a player, I want challenge evaluation to check whether the agent's code actually runs correctly so that pass/fail reflects real execution results, not just text pattern matching.
+
+**Why P1**: Makes evaluation credible — a code challenge that checks exit codes and output is far more convincing to judges than keyword matching alone.
+
+**Acceptance Criteria**:
+
+1. WHEN a Code Writer run completes THEN the deterministic evaluator SHALL check that a `.py` file was written and `exit code === 0` from execution.
+2. WHEN a Multi-Tool run completes THEN the deterministic evaluator SHALL check that at least one file was created and bash commands were executed.
+3. WHEN execution artifacts are present THEN the rubric scorer SHALL factor execution success into the subjective score.
+4. WHEN no tools were available for a run (Change Prompt) THEN evaluation SHALL fall back to text-only checks as before.
+
+**Independent Test**: Run Code Writer with NO tools (single-shot fallback) — fails deterministically. Run with tools — passes if code executes successfully.
+
+---
+
+### P2: Agent Workspace Persists Across Runs
+
+**User Story**: As a player, I want agent workspaces to persist their files across challenge runs so that agents can build on previous work and demonstrate progressive improvement.
+
+**Why P2**: Adds depth to the demo narrative — agents aren't stateless. Shows progression beyond just XP numbers.
+
+**Acceptance Criteria**:
+
+1. WHEN an agent creates files during a challenge run THEN the system SHALL store them at `~/.goobs/workspaces/{agentId}/workspace/` and preserve them across runs.
+2. WHEN a new challenge run starts THEN the system SHALL create per-run artifacts at `~/.goobs/workspaces/{agentId}/runs/{runId}/` alongside the persistent workspace.
+3. WHEN demo reset is triggered THEN the system SHALL optionally clean workspace directories based on reset scope.
+
+**Independent Test**: Run Code Writer twice with same agent. Second run can list files from first run via the `list_files` tool.
+
+---
+
+### P2: Extensible Tool Registry for MCP and Skills
+
+**User Story**: As a developer, I want the tool system to have a registry-based interface so that future tool types (MCP servers, skill loaders) can be added without changing the agent runtime loop.
+
+**Why P2**: Important for judge Q&A — shows the architecture was designed for extensibility beyond the hackathon.
+
+**Acceptance Criteria**:
+
+1. WHEN the runtime starts THEN the system SHALL register built-in tools (filesystem, bash) via a ToolRegistry interface.
+2. WHEN a new tool handler is registered THEN the system SHALL merge its tool definitions into the OpenAI tool schema and route tool calls to the handler.
+3. WHEN the ToolRegistry receives an unknown tool name THEN the system SHALL return a clear error result.
+
+**Independent Test**: Register a mock tool handler, verify its definitions appear in the tool schema, verify `execute()` routes calls correctly.
+
+---
+
 ### P2: Prebuilt Agents for Demo Acceleration
 
 **User Story**: As a presenter, I want prebuilt agents so that I can quickly demonstrate scenarios without re-entering setup every time.
@@ -153,6 +222,11 @@ Explicitly excluded to prevent scope creep during the 24-hour build.
 - WHEN challenge output is partially streamed or truncated THEN system SHALL evaluate only finalized content and mark run state accurately.
 - WHEN deterministic and LLM evaluation disagree THEN system SHALL apply configured merge policy and include rationale.
 - WHEN DB write fails during reward application THEN system SHALL mark run as non-finalized and prevent duplicate XP grants on retry.
+- WHEN a tool call attempts path traversal (e.g. `../../etc/passwd`) THEN system SHALL block the operation and return a safe error without exposing file system structure.
+- WHEN the maximum tool-use turns are exhausted THEN system SHALL return the final LLM response with a warning that the turn limit was reached.
+- WHEN a bash command times out THEN system SHALL return exit code 124, stderr "timeout", and allow the agent to continue if turns remain.
+- WHEN the provider endpoint does not support tool calling THEN the runtime SHALL fall back to single-shot completion and mark the run as tool-disabled in the log.
+- WHEN workspace directory creation fails (permissions, disk full) THEN system SHALL report the error and fail the challenge run gracefully.
 
 ---
 
@@ -165,12 +239,6 @@ Each requirement has a unique ID for tracking across design, tasks, and validati
 | MVP-01 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
 | MVP-02 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
 | MVP-03 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
-| MVP-13 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
-| MVP-18 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
-| MVP-14 | P1: Populate and Grow the Workshop Scene | Tasks | In Tasks |
-| MVP-15 | P1: Populate and Grow the Workshop Scene | Tasks | In Tasks |
-| MVP-16 | P1: Run 3 Learning Challenges End-to-End | Tasks | In Tasks |
-| MVP-17 | P1: Automatically Evaluate and Progress | Tasks | In Tasks |
 | MVP-04 | P1: Run 3 Learning Challenges End-to-End | Tasks | In Tasks |
 | MVP-05 | P1: Run 3 Learning Challenges End-to-End | Tasks | In Tasks |
 | MVP-06 | P1: Automatically Evaluate and Progress | Tasks | In Tasks |
@@ -180,12 +248,29 @@ Each requirement has a unique ID for tracking across design, tasks, and validati
 | MVP-10 | P2: Judge-Focused Demo Flow Reliability | Tasks | In Tasks |
 | MVP-11 | P2: Judge-Focused Demo Flow Reliability | Tasks | In Tasks |
 | MVP-12 | P3: Run History for Explanation Support | Tasks | In Tasks |
+| MVP-13 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
+| MVP-14 | P1: Populate and Grow the Workshop Scene | Tasks | In Tasks |
+| MVP-15 | P1: Populate and Grow the Workshop Scene | Tasks | In Tasks |
+| MVP-16 | P1: Run 3 Learning Challenges End-to-End | Tasks | In Tasks |
+| MVP-17 | P1: Automatically Evaluate and Progress | Tasks | In Tasks |
+| MVP-18 | P1: Build and Configure a Custom Agent | Tasks | In Tasks |
+| MVP-19 | P1: Sandboxed Tools Produce Real Artifacts | Design | Pending |
+| MVP-20 | P1: Sandboxed Tools Produce Real Artifacts | Design | Pending |
+| MVP-21 | P1: Sandboxed Tools Produce Real Artifacts | Design | Pending |
+| MVP-22 | P1: Sandboxed Tools Produce Real Artifacts | Design | Pending |
+| MVP-23 | P1: Sandboxed Tools Produce Real Artifacts | Design | Pending |
+| MVP-24 | P1: Sandboxed Tools Produce Real Artifacts | Design | Pending |
+| MVP-25 | P1: Evaluation Considers Execution Artifacts | Design | Pending |
+| MVP-26 | P1: Evaluation Considers Execution Artifacts | Design | Pending |
+| MVP-27 | P2: Agent Workspace Persists Across Runs | Design | Pending |
+| MVP-28 | P2: Extensible Tool Registry for MCP | Design | Pending |
+| MVP-29 | P2: Extensible Tool Registry for MCP | Design | Pending |
 
 **ID format:** `MVP-XX`
 
 **Status values:** Pending -> In Design -> In Tasks -> Implementing -> Verified
 
-**Coverage:** 18 total, 18 mapped to tasks, 0 unmapped
+**Coverage:** 29 total, 18 mapped to tasks, 11 unmapped ⚠️
 
 ---
 
@@ -198,3 +283,7 @@ How we know the MVP feature is successful:
 - [ ] Agents visibly route to assigned workstations with correct animation cues during task execution.
 - [ ] At least 2 consecutive full 90-second demo rehearsals complete on local laptop without manual fixes.
 - [ ] Judge-facing criteria mapping can be demonstrated with concrete in-app evidence for all 4 rubric categories.
+- [ ] Code Writer challenge produces a `.py` file in the workspace that executes successfully (exit code 0).
+- [ ] Multi-Tool challenge creates artifacts in the workspace and demonstrates multi-turn tool usage.
+- [ ] All tool calls are sandboxed within `~/.goobs/workspaces/{agentId}/` — path traversal is blocked.
+- [ ] Tool registry interface validates that mock tool handlers can be registered without changing the runtime loop.

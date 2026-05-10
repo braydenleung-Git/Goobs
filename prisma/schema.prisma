@@ -46,6 +46,8 @@ model ChallengeRun {
   modelUsed           String
   runtimeStateLogJson String   @default("[]")
   outputText          String   @default("")
+  toolCallsJson       String   @default("[]")
+  artifactsJson       String   @default("[]")
   deterministicPass   Boolean  @default(false)
   rubricPass          Boolean  @default(false)
   finalPass           Boolean  @default(false)

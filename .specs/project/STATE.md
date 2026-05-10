@@ -27,6 +27,12 @@
 - D-017: Workstation mapping is fixed for MVP: computer=coding, drawing-tablet=image generation, whiteboard=planning/brainstorming, book=writing.
 - D-018: Image-generation tasks require image-capable model selection.
 - D-019: Provider endpoint is `http://homelab/bifrost/v1` with no API key; provider config handles optional/empty keys gracefully.
+- D-020: AgentRuntime uses multi-turn OpenAI function calling for tool-enabled challenges (not single-shot generation).
+- D-021: Agent workspaces are sandboxed under `~/.goobs/workspaces/{agentId}/` with path traversal protection.
+- D-022: Tool registry uses a `ToolHandler` interface designed for future MCP server and skill loader integration.
+- D-023: Bash execution uses 10-second default timeout; commands run in the agent's workspace directory.
+- D-024: Challenges specify which tools are available (`availableTools` field); Change Prompt uses none (single-shot fallback).
+- D-025: Evaluation engine accepts optional tool call logs; execution artifacts factor into deterministic pass (exit code 0, file creation).
 
 ## Open Questions
 
@@ -42,12 +48,16 @@
 - T-PLAN-002: Finalize context decisions and scope guardrails. (Done)
 - T-PLAN-003: Produce architecture design doc for mvp-workshop feature. (Done)
 - T-PLAN-004: Produce granular tasks with ownership split and dependencies. (Done)
+- T-PLAN-005: Update spec/context/design/tasks for AgentRuntime + sandboxed tools. (Done — MVP-19 to MVP-29, T24-T37)
 
 ## Deferred Ideas
 
 - Full 20-challenge catalog and all tier progression.
 - PvP/battle systems.
 - Multi-provider abstraction layer beyond OpenAI-compatible endpoint support.
+- Full headless session mode with persistent bash shell and background processes.
+- MCP tool server integration (ToolRegistry interface is designed for it, not yet implemented).
+- Skill loading from filesystem (same ToolRegistry extension point).
 
 ## Preferences
 

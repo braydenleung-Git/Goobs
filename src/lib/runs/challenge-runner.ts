@@ -1,9 +1,14 @@
 import type { ChallengeSlug } from "@/lib/challenges/catalog"
 import { getChallengeBySlug } from "@/lib/challenges/catalog"
 import { runChatCompletion } from "@/lib/llm/openai-compatible-client"
+import { runAgent } from "@/lib/runtime/agent-runtime"
+import { ToolRegistry } from "@/lib/runtime/tool-registry"
+import { createFilesystemTools } from "@/lib/runtime/tools/filesystem"
+import { createBashTool } from "@/lib/runtime/tools/bash"
 import { evaluateRun } from "@/lib/eval/evaluation-engine"
 import { applyChallengeReward } from "@/lib/progression/progression-service"
 import { prisma } from "@/lib/db/prisma"
+import type { ToolResult } from "@/lib/runtime/tools/types"
 
 export interface RunInput {
   challengeSlug: ChallengeSlug
@@ -24,6 +29,9 @@ export interface RunResult {
   level: number
   unlockedWorkstationsJson: string
   runtimeEvents: string[]
+  toolCalls?: ToolResult[]
+  artifacts?: Array<{ path: string; size: number }>
+  fallbackUsed?: boolean
 }
 
 export async function runChallenge(input: RunInput): Promise<RunResult> {
@@ -38,29 +46,69 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
   events.push("state:walking")
   events.push("state:thinking")
 
-  const llmOutput = await runChatCompletion({
-    model: input.model,
-    systemPrompt: challenge.systemPromptTemplate,
-    messages: [{ role: "user", content: challenge.userPromptTemplate }],
-  })
+  const runId = crypto.randomUUID()
 
-  events.push("state:typing")
-  events.push("state:done")
+  let outputText = ""
+  let toolCallLog: ToolResult[] = []
+  let artifacts: Array<{ path: string; size: number }> = []
+  let fallbackUsed = false
+
+  const hasTools = challenge.availableTools && challenge.availableTools.length > 0
+
+  if (hasTools) {
+    events.push("state:typing")
+
+    const registry = new ToolRegistry()
+    registry.register(createFilesystemTools(input.agentId, runId))
+    registry.register(createBashTool(input.agentId))
+
+    const agentResult = await runAgent({
+      model: input.model,
+      systemPrompt: challenge.systemPromptTemplate,
+      userPrompt: challenge.userPromptTemplate,
+      agentId: input.agentId,
+      runId,
+      registry,
+      maxTurns: challenge.maxTurns,
+    })
+
+    outputText = agentResult.finalContent
+    toolCallLog = agentResult.toolCallLog
+    artifacts = agentResult.artifacts
+    fallbackUsed = agentResult.fallbackUsed
+
+    events.push("state:done")
+  } else {
+    const llmOutput = await runChatCompletion({
+      model: input.model,
+      systemPrompt: challenge.systemPromptTemplate,
+      messages: [{ role: "user", content: challenge.userPromptTemplate }],
+    })
+
+    outputText = llmOutput.content
+    events.push("state:typing")
+    events.push("state:done")
+  }
 
   const evaluation = evaluateRun({
     challenge,
-    output: llmOutput.content,
+    output: outputText,
     modelUsed: input.model,
+    toolCallLog,
+    artifacts,
   })
 
   const run = await prisma.challengeRun.create({
     data: {
+      id: runId,
       challengeSlug: input.challengeSlug,
       agentId: input.agentId,
       workstationId: challenge.workstationTarget,
       modelUsed: input.model,
       runtimeStateLogJson: JSON.stringify(events),
-      outputText: llmOutput.content,
+      outputText,
+      toolCallsJson: JSON.stringify(toolCallLog),
+      artifactsJson: JSON.stringify(artifacts),
       deterministicPass: evaluation.deterministic.passed,
       rubricPass: evaluation.rubric.passed,
       finalPass: evaluation.finalPass,
@@ -97,7 +145,7 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
   return {
     runId: run.id,
     challengeSlug: input.challengeSlug,
-    output: llmOutput.content,
+    output: outputText,
     finalPass: evaluation.finalPass,
     totalScore: evaluation.totalScore,
     deterministicScore: evaluation.deterministic.score,
@@ -107,5 +155,8 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
     level,
     unlockedWorkstationsJson,
     runtimeEvents: events,
+    toolCalls: toolCallLog,
+    artifacts,
+    fallbackUsed,
   }
 }

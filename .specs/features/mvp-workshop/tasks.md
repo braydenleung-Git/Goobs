@@ -52,6 +52,33 @@ Final:
   T23
 ```
 
+### Phase 4: Agent Runtime — Sandboxed Tools (Parallel-Safe Domain)
+
+New runtime layer enabling multi-turn tool use. Domain logic tasks are parallel-safe; integration follows.
+
+```text
+After T23 (existing codebase stable):
+  T24 [P]  T25 [P]  T30 [P]  T31 [P]  T35 [P]
+
+After T24 + T25:
+  T26 [P]  T27 [P]  T28 [P]
+
+After T25 + T33:
+  T34 [P]
+
+After T24 + T28 + T30 + T31:
+  T29
+
+After T29:
+  T32 -> T33
+
+After T32 + T33 + T35:
+  T36
+
+After T24:
+  T37
+```
+
 ---
 
 ## Task Breakdown
@@ -714,6 +741,434 @@ Final:
 
 ---
 
+### T24: Create WorkspaceManager [P]
+
+**What**: Implement workspace path management under `~/.goobs/workspaces/{agentId}/` with path traversal protection.
+**Where**: `src/lib/runtime/workspace.ts`, `src/lib/runtime/workspace.test.ts`
+**Depends on**: None
+**Reuses**: Node `fs/promises`, `path`
+**Owner**: You + AI
+**Requirement**: MVP-19, MVP-22, MVP-23, MVP-27
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `getWorkspacePath()` returns correct `~/.goobs/workspaces/{agentId}/workspace/` path
+- [ ] `getRunPath()` returns `~/.goobs/workspaces/{agentId}/runs/{runId}/` path
+- [ ] `resolveSafePath()` resolves relative paths and throws on traversal attempts (`../../etc/passwd`)
+- [ ] `ensureWorkspace()` creates directories on first use
+- [ ] `getRunArtifacts()` lists files created in a run directory
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- workspace` passes.
+
+---
+
+### T25: Create Tool Types [P]
+
+**What**: Define TypeScript types for tool definitions, tool calls, tool results, and the ToolHandler interface (OpenAI-compatible function calling format).
+**Where**: `src/lib/runtime/tools/types.ts`
+**Depends on**: None
+**Reuses**: None (pure types)
+**Owner**: You + AI
+**Requirement**: MVP-20, MVP-21, MVP-29
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `ToolDefinition` type matches OpenAI function calling schema
+- [ ] `ToolCall` type for parsed LLM tool call requests
+- [ ] `ToolResult` type with success/output/data fields
+- [ ] `ToolHandler` interface with `definitions` and `execute` methods
+- [ ] All types exported from `src/lib/runtime/tools/index.ts`
+- [ ] Build passes: `npm run build`
+
+**Tests**: none
+**Gate**: build
+
+**Verify**: `npm run build` exits 0.
+
+---
+
+### T26: Create Filesystem Tools [P]
+
+**What**: Implement sandboxed `read_file`, `write_file`, `list_files` tools as a ToolHandler that restricts operations to the agent's workspace.
+**Where**: `src/lib/runtime/tools/filesystem.ts`, `src/lib/runtime/tools/filesystem.test.ts`
+**Depends on**: T24, T25
+**Reuses**: WorkspaceManager
+**Owner**: You + AI
+**Requirement**: MVP-19
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `read_file` returns file contents or clear error (file not found, path blocked)
+- [ ] `write_file` creates/writes file and returns success confirmation
+- [ ] `list_files` returns directory listing (recursive and top-level)
+- [ ] All paths validated through `WorkspaceManager.resolveSafePath()` — traversal blocked
+- [ ] `createFilesystemTools()` factory returns a `ToolHandler` with all 3 tool definitions
+- [ ] Tool definitions match OpenAI function calling schema with JSON Schema parameters
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- filesystem` passes.
+
+---
+
+### T27: Create Bash Tool [P]
+
+**What**: Implement `exec_bash` tool that runs commands in the workspace directory with a 10-second timeout, returning `{stdout, stderr, exitCode}`.
+**Where**: `src/lib/runtime/tools/bash.ts`, `src/lib/runtime/tools/bash.test.ts`
+**Depends on**: T24, T25
+**Reuses**: WorkspaceManager (for working directory), Node `child_process.exec`
+**Owner**: You + AI
+**Requirement**: MVP-20
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] Runs a command in the agent's workspace directory as `cwd`
+- [ ] Returns `{stdout, stderr, exitCode}` after command completion
+- [ ] Timeout kills process and returns exit code 124 with "timeout" error
+- [ ] Shell-injection prevented (command is single arg to `exec`, not shell-expanded from user)
+- [ ] `createBashTool()` factory returns a `ToolHandler` with single `exec_bash` definition
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- bash` passes.
+
+---
+
+### T28: Create ToolRegistry [P]
+
+**What**: Implement extensible tool registry that merges definitions from all handlers and routes tool calls to the correct handler.
+**Where**: `src/lib/runtime/tool-registry.ts`, `src/lib/runtime/tool-registry.test.ts`
+**Depends on**: T25
+**Reuses**: Tool types from `tools/types.ts`
+**Owner**: You + AI
+**Requirement**: MVP-28, MVP-29
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `register(handler)` adds a handler's definitions to the merged schema
+- [ ] `getDefinitions()` returns all tool definitions as OpenAI-compatible array
+- [ ] `execute(name, args)` routes to correct handler and returns `ToolResult`
+- [ ] Unknown tool names return error result with "Unknown tool" message
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- tool-registry` passes.
+
+---
+
+### T29: Create AgentRuntime [P]
+
+**What**: Implement multi-turn tool-use loop. Send messages + tool definitions to LLM, execute tool calls, feed results back, repeat until stop or max turns.
+**Where**: `src/lib/runtime/agent-runtime.ts`, `src/lib/runtime/agent-runtime.test.ts`
+**Depends on**: T24, T28, T30
+**Reuses**: Updated LLM client (T30), ToolRegistry, WorkspaceManager
+**Owner**: You + AI
+**Requirement**: MVP-21, MVP-22
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] Builds initial messages: system prompt + user prompt
+- [ ] Sends messages with tool definitions from registry to LLM
+- [ ] On `finish_reason: "tool_calls"`: parses tool calls, executes via registry, appends `tool` role messages
+- [ ] Repeats until `finish_reason: "stop"` or max turns exceeded (default 5)
+- [ ] Returns `AgentRunResult` with final content, tool call log, artifacts list
+- [ ] Fallback: if LLM never calls tools (no `tool_calls` in response), returns result with `fallbackUsed: true`
+- [ ] Error in tool execution is reported back to LLM, not thrown (allows recovery)
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= baseline + 1 unit suite passes (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- agent-runtime` passes.
+
+---
+
+### T30: Update LLM Client for Tools Support [P]
+
+**What**: Add optional `tools` parameter to `runChatCompletion()` and parse `tool_calls` from response messages.
+**Where**: `src/lib/llm/openai-compatible-client.ts` (modify), `src/lib/llm/openai-compatible-client.test.ts` (update)
+**Depends on**: T25
+**Reuses**: Existing client structure
+**Owner**: You + AI
+**Requirement**: MVP-21, MVP-24
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `ChatRunInput` accepts optional `tools: ToolDefinition[]` field
+- [ ] LLM request includes `tools` and `tool_choice: "auto"` when tools are provided
+- [ ] Response parsing extracts `tool_calls[]` from `message` when `finish_reason` is `tool_calls`
+- [ ] Backward compatible: requests without tools work as before
+- [ ] `ChatRunOutput` includes optional `toolCalls: ToolCall[]` field
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= existing + new tool-related test cases (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- openai-compatible-client` passes.
+
+---
+
+### T31: Update Challenge Catalog with Tool Config [P]
+
+**What**: Add `availableTools` and `maxTurns` fields to challenge definitions. Code Writer and Multi-Tool get filesystem+bash tools; Change Prompt gets none.
+**Where**: `src/lib/challenges/catalog.ts` (modify), `src/lib/challenges/catalog.test.ts` (update)
+**Depends on**: None
+**Reuses**: Existing catalog structure
+**Owner**: You + AI
+**Requirement**: MVP-19, MVP-21, MVP-22
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `ChallengeDefinition` includes `availableTools: string[]` (tool names enabled for this challenge)
+- [ ] `ChallengeDefinition` includes `maxTurns: number` (default 5)
+- [ ] `change-prompt`: availableTools = [], maxTurns = 1 (single-shot)
+- [ ] `code-writer`: availableTools = ["read_file", "write_file", "list_files", "exec_bash"], maxTurns = 5
+- [ ] `multi-tool`: availableTools = ["read_file", "write_file", "list_files", "exec_bash"], maxTurns = 5
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= existing + 1 (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- catalog` passes.
+
+---
+
+### T32: Update Challenge Runner for AgentRuntime
+
+**What**: Modify challenge runner to use AgentRuntime for tool-enabled challenges instead of single-shot LLM call. Persist tool call log and artifacts alongside existing run data.
+**Where**: `src/lib/runs/challenge-runner.ts` (modify), `src/lib/runs/challenge-runner.test.ts` (update)
+**Depends on**: T29
+**Reuses**: AgentRuntime, ChallengeCatalog, EvaluationEngine, ProgressionService
+**Owner**: You + AI
+**Requirement**: MVP-21, MVP-22, MVP-23
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] When challenge has `availableTools.length > 0`: builds ToolRegistry with only enabled tools, creates AgentRuntime, runs multi-turn loop
+- [ ] When challenge has no tools (Change Prompt): uses existing single-shot path
+- [ ] Tool call log and artifacts are persisted in `ChallengeRun.toolCallsJson` and `artifactsJson`
+- [ ] Runtime events still emitted (walking, thinking, etc.) and persisted in `runtimeStateLogJson`
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= existing + 1 (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- challenge-runner` passes.
+
+---
+
+### T33: Update Evaluation Engine for Execution Artifacts
+
+**What**: Extend evaluation pipeline to accept tool call logs and execution results. Factor execution success (exit codes, file creation) into deterministic and rubric scoring.
+**Where**: `src/lib/eval/evaluation-engine.ts` (modify), `src/lib/eval/evaluation-engine.test.ts` (update)
+**Depends on**: T25
+**Reuses**: Existing evaluation pipeline, updated deterministic evaluator (T34)
+**Owner**: You + AI
+**Requirement**: MVP-25, MVP-26
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `EvaluateInput` accepts optional `toolCallLog: ToolResult[]` and `artifacts` fields
+- [ ] Tool results passed through to deterministic evaluator
+- [ ] Rubric scorer checks for execution success when tool results present (adds bonus for exit code 0)
+- [ ] Backward compatible: runs without tools evaluate the same as before
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= existing + 1 (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- evaluation-engine` passes.
+
+---
+
+### T34: Update Deterministic Evaluator for Execution Checks [P]
+
+**What**: Add execution artifact checks: for Code Writer, verify a `.py` file was written and `exec_bash` returned exit code 0. For Multi-Tool, verify files were created and code was executed.
+**Where**: `src/lib/eval/deterministic-evaluator.ts` (modify), `src/lib/eval/deterministic-evaluator.test.ts` (update)
+**Depends on**: T25, T33
+**Reuses**: Existing deterministic rule framework
+**Owner**: You + AI
+**Requirement**: MVP-25
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `evaluateDeterministic()` accepts optional `toolCallLog` parameter
+- [ ] Code Writer: checks for `write_file` tool call producing a `.py` file + `exec_bash` with exit code 0
+- [ ] Multi-Tool: checks for at least one `write_file` + at least one `exec_bash` call
+- [ ] Execution checks contribute to deterministic score (up to +30 for successful execution)
+- [ ] Change Prompt: no tool-log-based checks (evaluates the same as before)
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: >= existing + 1 (no silent deletions)
+
+**Tests**: unit
+**Gate**: quick
+
+**Verify**: `npm run test:unit -- deterministic-evaluator` passes.
+
+---
+
+### T35: Update Prisma Schema for Tool and Artifact Fields [P]
+
+**What**: Add `toolCallsJson` and `artifactsJson` columns to ChallengeRun model and run migration.
+**Where**: `prisma/schema.prisma` (modify), `prisma/migrations/*` (new)
+**Depends on**: None
+**Reuses**: Existing Prisma conventions
+**Owner**: You + AI
+**Requirement**: MVP-23, MVP-27
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `ChallengeRun` model has `toolCallsJson String @default("[]")`
+- [ ] `ChallengeRun` model has `artifactsJson String @default("[]")`
+- [ ] Migration applies without data loss (existing rows get empty defaults)
+- [ ] Build passes: `npm run build`
+
+**Tests**: none
+**Gate**: build
+
+**Verify**: `npx prisma migrate dev` then `npm run build` exit 0.
+
+---
+
+### T36: Update API Route and UI for Tool Results
+
+**What**: Pass tool call logs and artifacts through the run API response. Update challenge runner panel to show execution output (stdout/stderr/exit code) alongside text output.
+**Where**: `src/app/api/challenges/run/route.ts` (modify), `src/components/workshop/challenge-runner-panel.tsx` (modify)
+**Depends on**: T32, T33, T35
+**Reuses**: Existing API and UI patterns
+**Owner**: You + AI
+**Requirement**: MVP-23
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: `frontend-design`
+
+**Done when**:
+
+- [ ] API response includes `toolCalls` array and `artifacts` array in run result
+- [ ] Challenge runner panel shows "Execution" tab/section with tool call history (tool name, args, result)
+- [ ] `exec_bash` results display stdout, stderr, and exit code color-coded
+- [ ] `write_file` results show file path created
+- [ ] Change Prompt runs (no tools) show no execution panel (graceful empty state)
+- [ ] Gate check passes: `npm run lint && npm run test:unit`
+- [ ] Test count: (no separate tests needed — tested via integration)
+
+**Tests**: none
+**Gate**: quick
+
+**Verify**: Visual check in `npm run dev`: run Code Writer, verify execution panel appears with file path and exit code.
+
+---
+
+### T37: Update Demo Reset for Workspace Cleanup
+
+**What**: Extend demo reset route to optionally clean workspace directories under `~/.goobs/`.
+**Where**: `src/app/api/demo/reset/route.ts` (modify)
+**Depends on**: T24
+**Reuses**: WorkspaceManager, existing reset pattern
+**Owner**: You + AI
+**Requirement**: MVP-10 (extended)
+
+**Tools**:
+
+- MCP: `filesystem`
+- Skill: NONE
+
+**Done when**:
+
+- [ ] Reset route accepts optional `scope` parameter: `"transient"` | `"workspaces"` | `"full"`
+- [ ] `"transient"` scope: existing behavior (clear runs only)
+- [ ] `"workspaces"` scope: clear transient runs AND workspace directories
+- [ ] `"full"` scope: everything (existing full reset behavior)
+- [ ] Gate check passes: `npm run test && npm run build`
+
+**Tests**: integration
+**Gate**: full
+
+**Verify**: `npm run test -- demo.reset.route.integration` passes.
+
+---
+
 ## Parallel Execution Map
 
 ```text
@@ -736,6 +1191,19 @@ Phase 3 (UI + 3D):
   T21 (after T20)
   T22 (after T16/T17/T18/T19)
   T23 (after T21/T22)
+
+Phase 4 (Agent Runtime):
+  First wave (independent):
+    T24 [P]  T25 [P]  T30 [P]  T31 [P]  T35 [P]
+  Second wave (after T24 + T25):
+    T26 [P]  T27 [P]  T28 [P]
+  Sequential backbone:
+    T29 (after T24 + T28 + T30)
+    T32 (after T29 + T31)
+    T33 (after T25)
+    T34 (after T25 + T33)
+    T36 (after T32 + T33 + T35)
+    T37 (after T24)
 ```
 
 **Parallelism constraint validation:**
@@ -772,6 +1240,20 @@ Phase 3 (UI + 3D):
 | T21 | 3D state hook wiring | PASS Granular |
 | T22 | Demo controls/judging panel | PASS Granular |
 | T23 | Hardening + runbook | PASS Granular |
+| T24 | Workspace manager module | PASS Granular |
+| T25 | Tool type definitions | PASS Granular |
+| T26 | Filesystem tools module | PASS Granular |
+| T27 | Bash tool module | PASS Granular |
+| T28 | Tool registry module | PASS Granular |
+| T29 | Agent runtime module | PASS Granular |
+| T30 | LLM client extension | PASS Granular |
+| T31 | Challenge catalog extension | PASS Granular |
+| T32 | Challenge runner refactor | PASS Granular |
+| T33 | Evaluation engine extension | PASS Granular |
+| T34 | Deterministic evaluator extension | PASS Granular |
+| T35 | Prisma schema migration | PASS Granular |
+| T36 | API + UI update | PASS Granular |
+| T37 | Demo reset extension | PASS Granular |
 
 ---
 
@@ -802,6 +1284,20 @@ Phase 3 (UI + 3D):
 | T21 | T20 | T20 -> T21 | PASS Match |
 | T22 | T16, T17, T18, T19 | Arrows from all listed tasks to T22 | PASS Match |
 | T23 | T21, T22 | T21 -> T23 and T22 -> T23 | PASS Match |
+| T24 | None | None | PASS Match |
+| T25 | None | None | PASS Match |
+| T26 | T24, T25 | T24 -> T26 and T25 -> T26 | PASS Match |
+| T27 | T24, T25 | T24 -> T27 and T25 -> T27 | PASS Match |
+| T28 | T25 | T25 -> T28 | PASS Match |
+| T29 | T24, T28, T30 | T24 -> T29 and T28 -> T29 and T30 -> T29 | PASS Match |
+| T30 | T25 | T25 -> T30 | PASS Match |
+| T31 | None | None | PASS Match |
+| T32 | T29 | T29 -> T32 | PASS Match |
+| T33 | T25 | T25 -> T33 | PASS Match |
+| T34 | T25, T33 | T25 -> T34 and T33 -> T34 | PASS Match |
+| T35 | None | None | PASS Match |
+| T36 | T32, T33, T35 | T32 -> T36 and T33 -> T36 and T35 -> T36 | PASS Match |
+| T37 | T24 | T24 -> T37 | PASS Match |
 
 ---
 
@@ -832,6 +1328,20 @@ Phase 3 (UI + 3D):
 | T21 | 3D assets/wiring | none | none | PASS OK |
 | T22 | `src/components/**` UI logic | unit | unit | PASS OK |
 | T23 | rehearsal/runbook + bugfixes | none (or inherited by touched code) | none | PASS OK |
+| T24 | `src/lib/runtime/*` domain logic | unit | unit | PASS OK |
+| T25 | `src/lib/runtime/*` types | none | none | PASS OK |
+| T26 | `src/lib/runtime/*` domain logic | unit | unit | PASS OK |
+| T27 | `src/lib/runtime/*` domain logic | unit | unit | PASS OK |
+| T28 | `src/lib/runtime/*` domain logic | unit | unit | PASS OK |
+| T29 | `src/lib/runtime/*` domain logic | unit | unit | PASS OK |
+| T30 | `src/lib/llm/*` domain logic (modified) | unit | unit | PASS OK |
+| T31 | `src/lib/challenges/*` domain logic (modified) | unit | unit | PASS OK |
+| T32 | `src/lib/runs/*` domain logic (modified) | unit | unit | PASS OK |
+| T33 | `src/lib/eval/*` domain logic (modified) | unit | unit | PASS OK |
+| T34 | `src/lib/eval/*` domain logic (modified) | unit | unit | PASS OK |
+| T35 | Prisma schema/migration | none | none | PASS OK |
+| T36 | API route + UI component | integration + unit | none (visual verification) | PASS OK |
+| T37 | `src/app/api/**` API route (modified) | integration | integration | PASS OK |
 
 ---
 

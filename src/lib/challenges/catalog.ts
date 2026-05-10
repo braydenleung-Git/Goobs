@@ -10,6 +10,8 @@ export interface ChallengeDefinition {
   requiresImageCapableModel: boolean
   systemPromptTemplate: string
   userPromptTemplate: string
+  availableTools: string[]
+  maxTurns: number
   deterministicRules: {
     minOutputLength?: number
     mustContainKeywords?: string[]
@@ -25,6 +27,8 @@ const CHALLENGES: ChallengeDefinition[] = [
     xpReward: 40,
     workstationTarget: "whiteboard",
     requiresImageCapableModel: false,
+    availableTools: [],
+    maxTurns: 1,
     systemPromptTemplate:
       "You are an assistant that completes the user's task directly and concisely.",
     userPromptTemplate:
@@ -43,6 +47,8 @@ const CHALLENGES: ChallengeDefinition[] = [
     xpReward: 100,
     workstationTarget: "computer",
     requiresImageCapableModel: false,
+    availableTools: ["read_file", "write_file", "list_files", "exec_bash"],
+    maxTurns: 5,
     systemPromptTemplate:
       "You are a skilled Python developer. Write clean, correct, well-documented code. Only output the function definition.",
     userPromptTemplate:
@@ -61,6 +67,8 @@ const CHALLENGES: ChallengeDefinition[] = [
     xpReward: 200,
     workstationTarget: "computer",
     requiresImageCapableModel: false,
+    availableTools: ["read_file", "write_file", "list_files", "exec_bash"],
+    maxTurns: 5,
     systemPromptTemplate:
       "You are a full-stack developer. First outline your approach, then implement the solution. Be thorough.",
     userPromptTemplate:

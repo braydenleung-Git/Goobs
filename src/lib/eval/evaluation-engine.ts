@@ -1,10 +1,13 @@
 import { evaluateDeterministic } from "./deterministic-evaluator"
 import type { ChallengeDefinition } from "@/lib/challenges/catalog"
+import type { ToolResult } from "@/lib/runtime/tools/types"
 
 export interface EvaluateInput {
   challenge: ChallengeDefinition
   output: string
   modelUsed: string
+  toolCallLog?: ToolResult[]
+  artifacts?: Array<{ path: string; size: number }>
 }
 
 export interface EvaluateResult {
@@ -15,7 +18,11 @@ export interface EvaluateResult {
   rationale: string
 }
 
-function scoreRubric(challenge: ChallengeDefinition, output: string): {
+function scoreRubric(
+  challenge: ChallengeDefinition,
+  output: string,
+  toolCallLog?: ToolResult[],
+): {
   passed: boolean; score: number; rationale: string
 } {
   const lines = output.split("\n").filter(Boolean)
@@ -36,6 +43,21 @@ function scoreRubric(challenge: ChallengeDefinition, output: string): {
     score += 15; notes.push("Has docstring")
   }
 
+  if (toolCallLog && toolCallLog.length > 0) {
+    const hasSuccessfulExit = toolCallLog.some(
+      (tc) => tc.success && tc.data?.exitCode === 0,
+    )
+    if (hasSuccessfulExit) { score += 10; notes.push("Successful tool execution") }
+
+    const writeFileCount = toolCallLog.filter((tc) => tc.name === "write_file").length
+    if (writeFileCount > 0) {
+      score += Math.min(writeFileCount * 5, 15)
+      notes.push(`Wrote ${writeFileCount} file(s)`)
+    }
+
+    score += 5; notes.push("Used tools")
+  }
+
   const passed = score >= 60
   return {
     passed,
@@ -46,7 +68,7 @@ function scoreRubric(challenge: ChallengeDefinition, output: string): {
 
 export function evaluateRun(input: EvaluateInput): EvaluateResult {
   const deterministic = evaluateDeterministic(input.challenge, input.output)
-  const rubric = scoreRubric(input.challenge, input.output)
+  const rubric = scoreRubric(input.challenge, input.output, input.toolCallLog)
 
   const finalPass = deterministic.passed && rubric.passed
   const totalScore = Math.round((deterministic.score + rubric.score) / 2)

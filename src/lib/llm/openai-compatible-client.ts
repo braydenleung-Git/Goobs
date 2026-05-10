@@ -1,4 +1,5 @@
 import { getProviderRuntimeConfig } from "@/lib/provider/provider-config-service"
+import type { ToolDefinition, ToolCall } from "@/lib/runtime/tools/types"
 
 export interface ModelInfo {
   id: string
@@ -6,17 +7,24 @@ export interface ModelInfo {
   capabilities: string[]
 }
 
+export type ChatMessage =
+  | { role: "user" | "assistant"; content: string }
+  | { role: "tool"; tool_call_id: string; content: string }
+  | { role: "assistant"; content?: string; tool_calls?: ToolCall[] }
+
 export interface ChatRunInput {
   model: string
   systemPrompt: string
-  messages: Array<{ role: "user" | "assistant"; content: string }>
+  messages: ChatMessage[]
   maxTokens?: number
+  tools?: ToolDefinition[]
 }
 
 export interface ChatRunOutput {
   content: string
   model: string
   finishReason: string
+  toolCalls?: ToolCall[]
 }
 
 const FALLBACK_MODEL = "OpenCode/deepseek-v4-flash"
@@ -49,9 +57,17 @@ export async function listModels(): Promise<ModelInfo[]> {
 }
 
 export async function runChatCompletion(input: ChatRunInput): Promise<ChatRunOutput> {
-  const messages: Array<{ role: string; content: string }> = [
+  const messages: Array<Record<string, unknown>> = [
     { role: "system", content: input.systemPrompt },
-    ...input.messages.map((m) => ({ role: m.role, content: m.content })),
+    ...input.messages.map((m): Record<string, unknown> => {
+      if (m.role === "tool") {
+        return { role: "tool", tool_call_id: m.tool_call_id, content: m.content }
+      }
+      if (m.role === "assistant" && "tool_calls" in m && m.tool_calls) {
+        return { role: "assistant", content: m.content ?? null, tool_calls: m.tool_calls }
+      }
+      return { role: m.role, content: m.content }
+    }),
   ]
 
   const res = await fetchWithBase("chat/completions", {
@@ -60,6 +76,7 @@ export async function runChatCompletion(input: ChatRunInput): Promise<ChatRunOut
       model: input.model,
       messages,
       max_tokens: input.maxTokens ?? 2048,
+      ...(input.tools ? { tools: input.tools, tool_choice: "auto" } : {}),
     }),
   })
 
@@ -70,9 +87,17 @@ export async function runChatCompletion(input: ChatRunInput): Promise<ChatRunOut
 
   const body = await res.json()
   const choice = body.choices?.[0]
+  const toolCalls: ToolCall[] | undefined = choice?.message?.tool_calls?.map(
+    (tc: { id: string; function: { name: string; arguments: string } }) => ({
+      id: tc.id,
+      type: "function" as const,
+      function: { name: tc.function.name, arguments: tc.function.arguments },
+    }),
+  )
   return {
     content: choice?.message?.content ?? "",
     model: body.model ?? input.model,
     finishReason: choice?.finish_reason ?? "stop",
+    ...(toolCalls ? { toolCalls } : {}),
   }
 }

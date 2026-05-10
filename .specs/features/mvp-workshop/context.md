@@ -77,6 +77,41 @@ Deliver one polished, local-first vertical slice where users build agents with m
 
 - Demo reset is non-destructive: preserve saved agents, saved progress, and global provider key configuration.
 
+### Agent Runtime: Multi-Turn Tool Use Loop
+
+- Challenges that benefit from execution (Code Writer, Multi-Tool) use a multi-turn tool-use loop instead of single-shot generation.
+- The agent runtime sends the system prompt, user prompt, AND OpenAI tool definitions to the LLM.
+- When the LLM responds with `finish_reason: "tool_calls"`, the runtime executes the requested tools in the sandbox and feeds results back.
+- Loop repeats until `finish_reason: "stop"` or max turns (default 5) is reached.
+- Fallback: if the endpoint does not support tool calling, the runtime falls back to single-shot completion.
+
+### Sandboxed Tool Architecture
+
+- Tools are registered in an extensible `ToolRegistry` — built-in tools are filesystem and bash.
+- All tool operations are sandboxed to the agent's workspace directory.
+- Path traversal protection: any path that resolves outside the workspace is rejected.
+- The tool registry interface is designed for future MCP tool servers and skill loaders.
+
+### Workspace Path Convention
+
+- Agent workspaces live under `~/.goobs/workspaces/{agentId}/`.
+- Each run creates a subdirectory: `~/.goobs/workspaces/{agentId}/runs/{runId}/`.
+- Files created during a run persist in the agent's `workspace/` directory across runs.
+- Demo reset optionally cleans workspace directories.
+
+### Bash Execution Constraints
+
+- Commands run in the agent's workspace directory as working directory.
+- Default timeout: 10 seconds per command (configurable).
+- Timeout kills the process and returns exit code 124.
+- stdout, stderr, and exit code are captured and returned as tool results.
+
+### Evaluation Integration
+
+- Deterministic evaluator extended to check tool execution results: was a file written? Did code execute with exit code 0?
+- Rubric scorer factors execution success into subjective score.
+- Change Prompt challenge remains text-only (no tools) — validates graceful degradation.
+
 ### Agent's Discretion
 
 - Exact deterministic rule thresholds per challenge may be tuned during implementation.
@@ -103,3 +138,6 @@ Deliver one polished, local-first vertical slice where users build agents with m
 - Add battle-oriented gameplay modes if future direction warrants it.
 - Add provider-agnostic multi-provider abstraction.
 - Add production-ready account/auth/billing workflows.
+- Add full headless session mode (persistent bash shell, file watchers, background processes).
+- Add MCP tool server integration — ToolRegistry interface is designed for it, actual MCP client not implemented.
+- Add skill loading from `.skills/` directories — ToolRegistry supports it, not yet wired.
