@@ -193,6 +193,7 @@ function AgentCharacter({
     cur.z += (dz / dist) * step
   })
 
+  //TODO: modify the states color
   const color = state === "celebrate" ? "#a6e3a1"
     : state === "error" ? "#f38ba8"
     : state === "walking" ? "#fab387"
