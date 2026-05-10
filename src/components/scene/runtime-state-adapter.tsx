@@ -9,6 +9,7 @@ export interface AgentSceneState {
   animationState: AnimationState
   workstationTarget?: string
   position: [number, number, number]
+  targetPosition?: [number, number, number]
 }
 
 interface AgentMeta {
@@ -76,7 +77,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     setAgents((prev) =>
       prev.map((a) =>
         a.agentId === agentId
-          ? { ...a, workstationTarget: workstationId, position: target, animationState: "walking" }
+          ? { ...a, workstationTarget: workstationId, targetPosition: target, animationState: "walking" }
           : a,
       ),
     )

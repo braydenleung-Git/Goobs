@@ -45,14 +45,8 @@ function WorkshopContent() {
   }, [spawnAgent, updateAgentMeta])
 
   const handleRunStart = useCallback((agentId: string, workstationTarget: string) => {
-    setAgentAnimation(agentId, "walking")
-    setTimeout(() => {
-      routeAgent(agentId, workstationTarget)
-    }, 200)
-    setTimeout(() => {
-      setAgentAnimation(agentId, "thinking")
-    }, 1500)
-  }, [setAgentAnimation, routeAgent])
+    routeAgent(agentId, workstationTarget)
+  }, [routeAgent])
 
   const handleRunComplete = useCallback((result: RunResult, agentId: string) => {
     if (result.finalPass) {

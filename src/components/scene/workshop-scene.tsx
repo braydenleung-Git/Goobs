@@ -1,10 +1,12 @@
 "use client"
 
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber"
+import { Canvas, useThree, useFrame, type ThreeEvent } from "@react-three/fiber"
 import { OrbitControls, Grid, Html } from "@react-three/drei"
 import { useRuntimeState } from "./runtime-state-adapter"
 import { useCallback, useEffect, useRef } from "react"
 import * as THREE from "three"
+
+const WALK_SPEED = 3
 
 function AgentCharacter({
   agentId,
@@ -13,11 +15,30 @@ function AgentCharacter({
   agentId: string
   position: [number, number, number]
 }) {
-  const { agents, agentMeta, selectAgent, selectedAgentId } = useRuntimeState()
+  const { agents, agentMeta, selectAgent, selectedAgentId, setAgentAnimation } = useRuntimeState()
+  const groupRef = useRef<THREE.Group>(null)
   const agent = agents.find((a) => a.agentId === agentId)
   const meta = agentMeta[agentId]
   const state = agent?.animationState ?? "idle"
   const isSelected = selectedAgentId === agentId
+  const target = agent?.targetPosition
+
+  useFrame((_, delta) => {
+    if (!groupRef.current || !target) return
+    const cur = groupRef.current.position
+    const dx = target[0] - cur.x
+    const dz = target[2] - cur.z
+    const dist = Math.sqrt(dx * dx + dz * dz)
+    if (dist < 0.05) {
+      cur.x = target[0]
+      cur.z = target[2]
+      setAgentAnimation(agentId, "thinking")
+      return
+    }
+    const step = Math.min(WALK_SPEED * delta, dist)
+    cur.x += (dx / dist) * step
+    cur.z += (dz / dist) * step
+  })
 
   const color = state === "celebrate" ? "#a6e3a1"
     : state === "error" ? "#f38ba8"
@@ -33,7 +54,7 @@ function AgentCharacter({
   }, [agentId, selectAgent])
 
   return (
-    <group position={[position[0], 0, position[2]]}>
+    <group ref={groupRef} position={[position[0], 0, position[2]]}>
       <mesh onClick={handleClick}>
         <capsuleGeometry args={[0.3, height, 4, 8]} />
         <meshStandardMaterial
