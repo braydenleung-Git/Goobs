@@ -245,7 +245,7 @@ function AgentCharacter({
         playReverse={(wasIdleLongRef.current && state !== "idle_long") || (reverseSittingStartTimeRef.current !== null)}
       />
       {isSelected && (
-        <mesh position={[0, -0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.35, 0.45, 32]} />
           <meshStandardMaterial
             color={color}
@@ -343,6 +343,31 @@ function SceneClickCatcher() {
   }, [selectAgent])
 
   gl.domElement.addEventListener("pointerdown", handlePointerDown)
+  return null
+}
+
+function CameraController({ controlsRef }: { controlsRef: React.MutableRefObject<any> }) {
+  const { selectedInstanceId, agents } = useRuntimeState()
+  const { camera } = useThree()
+
+  useFrame(() => {
+    const ctrl = controlsRef.current
+    if (!ctrl?.target) return
+    const agent = selectedInstanceId ? agents.find((a) => a.instanceId === selectedInstanceId) : undefined
+
+    if (agent) {
+      ctrl.autoRotate = false
+      const tx = agent.position[0]
+      const tz = agent.position[2]
+      ctrl.target.lerp(new THREE.Vector3(tx, 0.4, tz), 0.06)
+      camera.position.lerp(new THREE.Vector3(tx + 3, 3.5, tz + 3), 0.06)
+    } else {
+      ctrl.autoRotate = true
+      ctrl.target.lerp(new THREE.Vector3(0, 0.4, 0), 0.02)
+    }
+    ctrl.update()
+  })
+
   return null
 }
 
@@ -450,6 +475,7 @@ function DropPreview() {
 
 export function WorkshopScene() {
   const { agents, agentMeta } = useRuntimeState()
+  const controlsRef = useRef<any>(null)
 
   const stored = typeof window !== "undefined" ? localStorage.getItem("goobs-progress") : null
   let unlockedWorkstations: string[] = ["computer"]
@@ -467,6 +493,7 @@ export function WorkshopScene() {
       }}
     >
       <SceneClickCatcher />
+      <CameraController controlsRef={controlsRef} />
       <DropCatcher />
       <DropPreview />
       <ambientLight intensity={0.5} />
@@ -505,7 +532,12 @@ export function WorkshopScene() {
       ))}
 
       <OrbitControls
+        ref={controlsRef}
         enablePan={false}
+        enableDamping
+        dampingFactor={0.05}
+        autoRotate
+        autoRotateSpeed={0.5}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 2.2}
         minDistance={5}

@@ -2,77 +2,19 @@
 
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Grid } from "@react-three/drei"
+import { FBXModelLoader } from "@/components/3d/fbx-model-loader"
 
-function PlaceholderAgent({ skinColor, shirtColor, pantsColor }: { skinColor: string; shirtColor: string; pantsColor: string }) {
-  return (
-    <group position={[0, 0.3, 0]}>
-      {/* Body — shirt */}
-      <mesh>
-        <capsuleGeometry args={[0.4, 0.8, 8, 16]} />
-        <meshStandardMaterial color={shirtColor} roughness={0.3} metalness={0.1} />
-      </mesh>
-      {/* Head — skin */}
-      <mesh position={[0, 0.9, 0]}>
-        <sphereGeometry args={[0.28, 16, 16]} />
-        <meshStandardMaterial color={skinColor} roughness={0.4} />
-      </mesh>
-      {/* Nose — skin */}
-      <mesh position={[0, 0.9, 0.22]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color={skinColor} />
-      </mesh>
-      {/* Eyes */}
-      <group position={[0, -0.1, 0]}>
-        <mesh position={[-0.15, 0, 0]} rotation={[0, 0, 0.2]}>
-          <sphereGeometry args={[0.06, 8, 8]} />
-          <meshStandardMaterial color="#ffffff" />
-        </mesh>
-        <mesh position={[0.15, 0, 0]} rotation={[0, 0, -0.2]}>
-          <sphereGeometry args={[0.06, 8, 8]} />
-          <meshStandardMaterial color="#ffffff" />
-        </mesh>
-      </group>
-      {/* Arms — shirt color */}
-      <group position={[0, 0.5, -0.35]}>
-        <mesh position={[-0.18, 0, 0]} rotation={[0.3, 0, 0]}>
-          <boxGeometry args={[0.05, 0.3, 0.05]} />
-          <meshStandardMaterial color={shirtColor} />
-        </mesh>
-        <mesh position={[0.18, 0, 0]} rotation={[-0.3, 0, 0]}>
-          <boxGeometry args={[0.05, 0.3, 0.05]} />
-          <meshStandardMaterial color={shirtColor} />
-        </mesh>
-      </group>
-      {/* Legs — pants color */}
-      <group position={[-0.12, -0.4, 0]}>
-        <mesh>
-          <boxGeometry args={[0.1, 0.2, 0.1]} />
-          <meshStandardMaterial color={pantsColor} />
-        </mesh>
-      </group>
-      <group position={[0.12, -0.4, 0]}>
-        <mesh>
-          <boxGeometry args={[0.1, 0.2, 0.1]} />
-          <meshStandardMaterial color={pantsColor} />
-        </mesh>
-      </group>
-    </group>
-  )
-}
-
-function FloatingHat({ shirtColor }: { shirtColor: string }) {
-  return (
-    <group position={[0, 1.2, 0]}>
-      <mesh position={[0, 0.08, 0]}>
-        <boxGeometry args={[0.35, 0.04, 0.35]} />
-        <meshStandardMaterial color={shirtColor} opacity={0.6} transparent />
-      </mesh>
-      <mesh position={[0, 0.2, -0.05]}>
-        <boxGeometry args={[0.05, 0.2, 0.2]} />
-        <meshStandardMaterial color={shirtColor} opacity={0.4} transparent />
-      </mesh>
-    </group>
-  )
+const ANIMATION_MAPPING = {
+  stand: "No_Pose",
+  idle: "Idle",
+  walking: "Walking",
+  sitting: "Sitting_Transition",
+  working: "Working",
+  celebrate: "Finish_Task_1",
+  attention_start: "Attention_Start",
+  attention_loop: "Attention_Loop",
+  idle_long: "lying_down_transistion",
+  easter_egg: "67",
 }
 
 interface Props {
@@ -82,10 +24,11 @@ interface Props {
 }
 
 export function AgentPreviewScene({ skinColor, shirtColor, pantsColor }: Props) {
+  const materialColors = { skin: skinColor, shirt: shirtColor, pants: pantsColor }
   return (
     <div className="h-full w-full overflow-hidden rounded-2xl">
       <Canvas
-        camera={{ position: [2.5, 2, 3.5], fov: 35 }}
+        camera={{ position: [1.5, 1.2, 2], fov: 35 }}
         gl={{ antialias: true }}
         style={{ height: "100%", width: "100%" }}
         onCreated={({ gl }) => {
@@ -109,8 +52,14 @@ export function AgentPreviewScene({ skinColor, shirtColor, pantsColor }: Props) 
           position={[0, -0.01, 0]}
         />
 
-        <PlaceholderAgent skinColor={skinColor} shirtColor={shirtColor} pantsColor={pantsColor} />
-        <FloatingHat shirtColor={shirtColor} />
+        <FBXModelLoader
+          url="/3d/goobs.fbx"
+          scale={[0.0025, 0.0025, 0.0025]}
+          position={[0, -0.2, 0]}
+          animationState="idle"
+          materialColors={materialColors}
+          animationMapping={ANIMATION_MAPPING}
+        />
 
         <OrbitControls
           enableZoom={false}

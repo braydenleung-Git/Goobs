@@ -39,36 +39,41 @@ export function FBXModelLoader({
   const animationsRef = useRef<THREE.AnimationClip[]>([])
   const mixerRef = useRef<THREE.AnimationMixer | null>(null)
   const activeActionRef = useRef<THREE.AnimationAction | null>(null)
+  const materialColorsRef = useRef(materialColors)
+  materialColorsRef.current = materialColors
+
+  function applyColorsToModel(root: THREE.Group, colors: Record<string, string>) {
+    root.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      const mats = Array.isArray(child.material) ? child.material : [child.material]
+      for (const mat of mats) {
+        const name = (mat as any)?.name?.trim()?.toLowerCase() ?? ""
+        if (!name) continue
+        let match: string | undefined
+        if (name.includes("skin")) match = colors.skin
+        else if (name.includes("shirt")) match = colors.shirt
+        else if (name.includes("pant")) match = colors.pants
+        if (match) {
+          ;(mat as THREE.MeshStandardMaterial).color = new THREE.Color(match)
+          mat.needsUpdate = true
+        }
+      }
+    })
+  }
 
   useEffect(() => {
     const loader = new FBXLoader()
     loader.load(url, (fbx) => {
-      // Scale and position the model
       fbx.scale.set(...scale)
       fbx.position.set(...position)
       fbx.rotation.set(...rotation)
 
-      // Apply colors by material name
-      if (materialColors) {
-        fbx.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            const mat = child.material
-            if (mat) {
-              const matName = (mat as any).name?.toLowerCase() || ""
-              let match: string | undefined
-              if (matName.includes("skin") || matName.includes("body") || matName.includes("head")) match = materialColors.skin
-              else if (matName.includes("shirt") || matName.includes("top") || matName.includes("jacket")) match = materialColors.shirt
-              else if (matName.includes("pants") || matName.includes("bottom") || matName.includes("leg")) match = materialColors.pants
-              if (match) {
-                ;(mat as THREE.MeshStandardMaterial).color = new THREE.Color(match)
-                mat.needsUpdate = true
-              }
-            }
-          }
-        })
+      modelRef.current = fbx
+
+      if (materialColorsRef.current) {
+        applyColorsToModel(fbx, materialColorsRef.current)
       }
 
-      // Extract animations from NLA strips
       if (fbx.animations && fbx.animations.length > 0) {
         animationsRef.current = fbx.animations
 
@@ -88,7 +93,6 @@ export function FBXModelLoader({
         }
       }
 
-      // Add to scene
       if (groupRef.current) {
         groupRef.current.add(fbx)
       }
@@ -108,6 +112,13 @@ export function FBXModelLoader({
       activeActionRef.current = null
     }
   }, [url])
+
+  // Re-apply colors when materialColors changes
+  useEffect(() => {
+    if (modelRef.current && materialColorsRef.current) {
+      applyColorsToModel(modelRef.current, materialColorsRef.current)
+    }
+  }, [materialColors])
 
   // Handle animation state changes
   useEffect(() => {

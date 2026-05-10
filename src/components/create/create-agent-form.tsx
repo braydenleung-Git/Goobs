@@ -24,20 +24,20 @@ interface Props {
     modelColorsJson?: string
   } | null
   onUpdated?: () => void
+  onColorsChange?: (colors: { skin: string; shirt: string; pants: string }) => void
 }
 
-const PASTEL_SKIN = ["#f5c2e7", "#fab387", "#f9e2af", "#cdd6f4"]
-const PASTEL_SHIRT = ["#89b4fa", "#a6e3a1", "#cba6f7", "#94e2d5", "#f9e2af", "#f38ba8"]
-const PASTEL_PANTS = ["#6c7086", "#585b70", "#89b4fa", "#a6e3a1", "#45475a"]
+const SKIN_COLORS = ["#f5c2e7", "#fab387", "#f9e2af", "#cdd6f4", "#e8b4a0", "#d4a08a", "#c4957a", "#b8846a"]
+const PASTEL_COLORS = ["#89b4fa", "#a6e3a1", "#cba6f7", "#94e2d5", "#f9e2af", "#f5c2e7", "#fab387", "#f38ba8", "#b4befe", "#a6adc8"]
 
 function parseColors(agentColorsJson?: string): { skin: string; shirt: string; pants: string } {
   if (agentColorsJson) {
-    try { return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086", ...JSON.parse(agentColorsJson) } } catch {}
+    try { return { skin: SKIN_COLORS[0], shirt: PASTEL_COLORS[0], pants: PASTEL_COLORS[3], ...JSON.parse(agentColorsJson) } } catch {}
   }
-  return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" }
+  return { skin: SKIN_COLORS[0], shirt: PASTEL_COLORS[0], pants: PASTEL_COLORS[3] }
 }
 
-export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Props) {
+export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated, onColorsChange }: Props) {
   const [name, setName] = useState(editingAgent?.name ?? "")
   const [systemPrompt, setSystemPrompt] = useState(editingAgent?.systemPrompt ?? "")
   const [skills, setSkills] = useState<string[]>(() => {
@@ -65,7 +65,6 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editContent, setEditContent] = useState("")
-  const [showSkillHint, setShowSkillHint] = useState(true)
 
   useEffect(() => {
     fetch("/api/models")
@@ -163,10 +162,11 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           setName("")
           setSystemPrompt("")
           setSkills([])
-          setColor(PASTEL_SHIRT[0])
-          setSkinColor(PASTEL_SKIN[0])
-          setShirtColor(PASTEL_SHIRT[0])
-          setPantsColor(PASTEL_PANTS[0])
+          setColor(PASTEL_COLORS[0])
+          setSkinColor(SKIN_COLORS[0])
+          setShirtColor(PASTEL_COLORS[0])
+          setPantsColor(PASTEL_COLORS[3])
+          onColorsChange?.({ skin: SKIN_COLORS[0], shirt: PASTEL_COLORS[0], pants: PASTEL_COLORS[3] })
           setPrefersImage(false)
         } else {
           setMessage("Failed to create agent")
@@ -320,8 +320,8 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           <div>
             <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Skin</label>
             <div className="flex flex-wrap gap-2">
-              {PASTEL_SKIN.map((c) => (
-                <button key={c} type="button" onClick={() => setSkinColor(c)}
+              {SKIN_COLORS.map((c) => (
+                <button key={c} type="button" onClick={() => { setSkinColor(c); onColorsChange?.({ skin: c, shirt: shirtColor, pants: pantsColor }) }}
                   className="h-7 w-7 rounded-full transition-all duration-150"
                   style={{ backgroundColor: c, boxShadow: skinColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: skinColor === c ? "scale(1.15)" : "scale(1)" }} />
               ))}
@@ -330,8 +330,8 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           <div>
             <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Shirt</label>
             <div className="flex flex-wrap gap-2">
-              {PASTEL_SHIRT.map((c) => (
-                <button key={c} type="button" onClick={() => { setShirtColor(c); setColor(c) }}
+              {PASTEL_COLORS.map((c) => (
+                <button key={c} type="button" onClick={() => { setShirtColor(c); setColor(c); onColorsChange?.({ skin: skinColor, shirt: c, pants: pantsColor }) }}
                   className="h-7 w-7 rounded-full transition-all duration-150"
                   style={{ backgroundColor: c, boxShadow: shirtColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: shirtColor === c ? "scale(1.15)" : "scale(1)" }} />
               ))}
@@ -340,8 +340,8 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           <div>
             <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Pants</label>
             <div className="flex flex-wrap gap-2">
-              {PASTEL_PANTS.map((c) => (
-                <button key={c} type="button" onClick={() => setPantsColor(c)}
+              {PASTEL_COLORS.map((c) => (
+                <button key={c} type="button" onClick={() => { setPantsColor(c); onColorsChange?.({ skin: skinColor, shirt: shirtColor, pants: c }) }}
                   className="h-7 w-7 rounded-full transition-all duration-150"
                   style={{ backgroundColor: c, boxShadow: pantsColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: pantsColor === c ? "scale(1.15)" : "scale(1)" }} />
               ))}
@@ -459,36 +459,6 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
                   Save Skill
                 </button>
               </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {showSkillHint && (
-        <>
-          <div className="fixed inset-0 z-50" onClick={() => setShowSkillHint(false)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="glass-strong glass-border-accent w-full max-w-sm animate-scale-in rounded-2xl p-5 shadow-2xl shadow-black/50" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-xl mt-0.5">💡</span>
-                <div>
-                  <h3 className="font-display text-base font-bold text-text">Skills are knowledge blocks</h3>
-                  <p className="font-body text-xs text-subtext/60 mt-1 leading-relaxed">
-                    Write markdown that teaches your agent about a topic. The agent reads these when responding.
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl bg-black/20 border border-white/5 p-3 font-mono text-[11px] text-text/70 leading-relaxed mb-4">
-                # Python Basics{"\n"}
-                You know Python 3.12. Use type hints and async/await for I/O operations.
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSkillHint(false)}
-                className="btn-primary rounded-full px-6 py-2 font-display text-sm font-bold w-full"
-              >
-                Got it!
-              </button>
             </div>
           </div>
         </>
