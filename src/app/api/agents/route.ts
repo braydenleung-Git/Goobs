@@ -14,7 +14,14 @@ const AgentInputSchema = z.object({
 
 const AgentUpdateSchema = AgentInputSchema.partial()
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const id = url.searchParams.get("id")
+  if (id) {
+    const agent = await prisma.agentProfile.findUnique({ where: { id } })
+    if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 })
+    return NextResponse.json(agent)
+  }
   const agents = await prisma.agentProfile.findMany({ orderBy: { createdAt: "desc" } })
   return NextResponse.json(agents)
 }
@@ -47,4 +54,17 @@ export async function PATCH(request: NextRequest) {
   }
   const agent = await prisma.agentProfile.update({ where: { id }, data: parsed.data })
   return NextResponse.json(agent)
+}
+
+export async function DELETE(request: NextRequest) {
+  const url = new URL(request.url)
+  const id = url.searchParams.get("id")
+  if (!id) return NextResponse.json({ error: "id query param required" }, { status: 400 })
+  try {
+    await prisma.challengeRun.deleteMany({ where: { agentId: id } })
+    await prisma.agentProfile.delete({ where: { id } })
+    return NextResponse.json({ status: "deleted" })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Delete failed" }, { status: 500 })
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 
-export type TabId = "workshop" | "create"
+export type TabId = "workshop" | "agents"
 
 interface TopNavProps {
   activeTab: TabId
@@ -35,7 +35,7 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "workshop", label: "Workshop" },
-    { id: "create", label: "Create" },
+    { id: "agents", label: "Agents" },
   ]
 
   return (

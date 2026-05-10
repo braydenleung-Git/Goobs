@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, type FormEvent } from "react"
+import { skillName } from "@/lib/skills/skill-name"
 
 interface ModelOption {
   id: string
@@ -10,6 +11,15 @@ interface ModelOption {
 
 interface Props {
   onAgentCreated?: (agentId: string, name: string, color: string) => void
+  editingAgent?: {
+    id: string
+    name: string
+    systemPrompt: string
+    skillsJson: string
+    defaultModel: string
+    modelColorHex: string
+  } | null
+  onUpdated?: () => void
 }
 
 const PRESET_COLORS = [
@@ -17,16 +27,21 @@ const PRESET_COLORS = [
   "#fab387", "#f38ba8", "#94e2d5", "#f9e2af",
 ]
 
-export function CreateAgentForm({ onAgentCreated }: Props) {
-  const [name, setName] = useState("")
-  const [systemPrompt, setSystemPrompt] = useState("")
-  const [skills, setSkills] = useState<string[]>([])
-  const [model, setModel] = useState("OpenCode/deepseek-v4-flash")
+export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Props) {
+  const [name, setName] = useState(editingAgent?.name ?? "")
+  const [systemPrompt, setSystemPrompt] = useState(editingAgent?.systemPrompt ?? "")
+  const [skills, setSkills] = useState<string[]>(() => {
+    if (editingAgent) { try { return JSON.parse(editingAgent.skillsJson) } catch { return [] } }
+    return []
+  })
+  const [model, setModel] = useState(editingAgent?.defaultModel ?? "OpenCode/deepseek-v4-flash")
   const [models, setModels] = useState<ModelOption[]>([])
-  const [color, setColor] = useState(PRESET_COLORS[0])
+  const [color, setColor] = useState(editingAgent?.modelColorHex ?? PRESET_COLORS[0])
   const [prefersImage, setPrefersImage] = useState(false)
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editContent, setEditContent] = useState("")
 
   useEffect(() => {
     fetch("/api/models")
@@ -42,16 +57,38 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
       })
   }, [])
 
-  const addSkill = () => {
-    setSkills((prev) => [...prev, ""])
+  const openEditor = (index: number | null) => {
+    if (index !== null) {
+      setEditContent(skills[index] || "")
+      setEditingIndex(index)
+    } else {
+      setEditContent("")
+      setEditingIndex(skills.length)
+    }
+  }
+
+  const saveSkill = () => {
+    if (editingIndex === null) return
+    const trimmed = editContent.trim()
+    setSkills((prev) => {
+      const next = [...prev]
+      if (editingIndex >= next.length) {
+        next.push(trimmed)
+      } else {
+        next[editingIndex] = trimmed
+      }
+      return next
+    })
+    setEditingIndex(null)
+    setEditContent("")
   }
 
   const removeSkill = (index: number) => {
+    if (editingIndex === index) {
+      setEditingIndex(null)
+      setEditContent("")
+    }
     setSkills((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const updateSkill = (index: number, value: string) => {
-    setSkills((prev) => prev.map((s, i) => (i === index ? value : s)))
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -60,30 +97,46 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
     setSaving(true)
     try {
       const filteredSkills = skills.filter((s) => s.trim().length > 0)
-      const res = await fetch("/api/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          systemPrompt,
-          skillsJson: JSON.stringify(filteredSkills),
-          toolsJson: "[]",
-          defaultModel: model,
-          modelColorHex: color,
-          prefersImageTasks: prefersImage,
-        }),
-      })
-      if (res.ok) {
-        const agent = await res.json()
-        setMessage(`"${name}" created!`)
-        onAgentCreated?.(agent.id, name, color)
-        setName("")
-        setSystemPrompt("")
-        setSkills([])
-        setColor(PRESET_COLORS[0])
-        setPrefersImage(false)
+      const body = {
+        name,
+        systemPrompt,
+        skillsJson: JSON.stringify(filteredSkills),
+        toolsJson: "[]",
+        defaultModel: model,
+        modelColorHex: color,
+        prefersImageTasks: prefersImage,
+      }
+
+      if (editingAgent) {
+        const res = await fetch(`/api/agents?id=${editingAgent.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (res.ok) {
+          setMessage(`"${name}" updated!`)
+          onUpdated?.()
+        } else {
+          setMessage("Failed to update agent")
+        }
       } else {
-        setMessage("Failed to create agent")
+        const res = await fetch("/api/agents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (res.ok) {
+          const agent = await res.json()
+          setMessage(`"${name}" created!`)
+          onAgentCreated?.(agent.id, name, color)
+          setName("")
+          setSystemPrompt("")
+          setSkills([])
+          setColor(PRESET_COLORS[0])
+          setPrefersImage(false)
+        } else {
+          setMessage("Failed to create agent")
+        }
       }
     } catch {
       setMessage("Network error")
@@ -97,10 +150,10 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
     <div className="space-y-5">
       <div className="animate-fade-in stagger-1">
         <h2 className="font-display text-2xl font-bold text-text">
-          Create Agent
+          {editingAgent ? "Edit Agent" : "Create Agent"}
         </h2>
         <p className="mt-1 font-body text-sm text-subtext">
-          Design your workshop companion
+          {editingAgent ? "Update your workshop companion" : "Design your workshop companion"}
         </p>
       </div>
 
@@ -148,17 +201,23 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
             </label>
             <div className="space-y-2">
               {skills.map((skill, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    className="input-glass flex-1"
-                    placeholder="@/home/nate/.agents/skills/..."
-                    value={skill}
-                    onChange={(e) => updateSkill(i, e.target.value)}
-                  />
+                <div key={i} className="group flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditor(i)}
+                    className="flex-1 rounded-xl bg-white/[0.03] border border-white/5 px-3 py-2 text-left text-xs text-text/70 hover:bg-white/[0.06] hover:border-white/10 transition-all truncate"
+                  >
+                    <span className="font-display text-sm font-bold text-text truncate block">
+                      {skillName(skill)}
+                    </span>
+                    <span className="font-body text-[10px] text-subtext/40 mt-0.5 block truncate">
+                      {skill.length} chars
+                    </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeSkill(i)}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-red/10 text-red/70 hover:bg-red/20 hover:text-red transition-colors text-sm"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-red/10 text-red/70 hover:bg-red/20 hover:text-red transition-colors text-sm opacity-0 group-hover:opacity-100 shrink-0"
                   >
                     ✕
                   </button>
@@ -166,8 +225,8 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
               ))}
               <button
                 type="button"
-                onClick={addSkill}
-                className="flex items-center gap-1.5 rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-subtext/60 hover:border-mauve/30 hover:text-mauve/70 transition-all"
+                onClick={() => openEditor(null)}
+                className="flex items-center gap-1.5 rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-subtext/60 hover:border-mauve/30 hover:text-mauve/70 transition-all w-full justify-center"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -182,17 +241,30 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
             <label className="mb-1.5 block font-display text-sm font-bold text-text">
               Model
             </label>
-            <select
-              className="input-glass"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name || m.id}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all"
+                style={{
+                  background: "rgba(49, 50, 68, 0.4)",
+                  border: "1px solid rgba(205, 214, 244, 0.08)",
+                  color: "#cdd6f4",
+                }}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id} style={{ background: "#313244", color: "#cdd6f4" }}>
+                    {m.name || m.id}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-subtext/60"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
           </div>
         </div>
 
@@ -236,16 +308,63 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
           disabled={saving || !name.trim()}
           className="btn-primary animate-fade-in stagger-5 w-full"
         >
-          {saving ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue/30 border-t-blue" />
-              Creating...
-            </span>
-          ) : (
-            "Create Agent"
-          )}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue/30 border-t-blue" />
+                {editingAgent ? "Saving..." : "Creating..."}
+              </span>
+            ) : editingAgent ? (
+              "Update Agent"
+            ) : (
+              "Create Agent"
+            )}
         </button>
       </form>
+
+      {editingIndex !== null && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setEditingIndex(null)} />
+          <div className="fixed inset-0 z-50 flex flex-col glass-strong glass-border-accent overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/5 px-5 py-3 shrink-0">
+              <h3 className="font-display text-base font-bold text-text">
+                Edit Skill
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingIndex(null)}
+                className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 p-4 min-h-0">
+              <textarea
+                className="h-full w-full resize-none rounded-xl bg-black/20 border border-white/5 px-4 py-3 text-sm font-mono text-text leading-relaxed focus:border-blue/30 focus:shadow-[0_0_0_2px_rgba(137,180,250,0.15)] transition-all outline-none"
+                placeholder="Paste skill markdown content here..."
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-white/5 px-5 py-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingIndex(null)}
+                className="btn-ghost rounded-xl px-4 py-2 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveSkill}
+                disabled={!editContent.trim()}
+                className="btn-primary rounded-xl px-5 py-2 text-sm"
+              >
+                Save Skill
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

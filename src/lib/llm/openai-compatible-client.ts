@@ -70,14 +70,20 @@ export async function runChatCompletion(input: ChatRunInput): Promise<ChatRunOut
     }),
   ]
 
+  const requestBody: Record<string, unknown> = {
+    model: input.model,
+    messages,
+    max_tokens: input.maxTokens ?? 2048,
+    ...(input.tools ? { tools: input.tools, tool_choice: "auto" } : {}),
+  }
+
+  if (/deepseek/i.test(input.model)) {
+    requestBody.thinking = { type: "disabled" }
+  }
+
   const res = await fetchWithBase("chat/completions", {
     method: "POST",
-    body: JSON.stringify({
-      model: input.model,
-      messages,
-      max_tokens: input.maxTokens ?? 2048,
-      ...(input.tools ? { tools: input.tools, tool_choice: "auto" } : {}),
-    }),
+    body: JSON.stringify(requestBody),
   })
 
   if (!res.ok) {

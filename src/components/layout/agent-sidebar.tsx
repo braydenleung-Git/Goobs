@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { skillName } from "@/lib/skills/skill-name"
 
 interface AgentSummary {
   id: string
@@ -121,7 +122,10 @@ export function AgentSidebar() {
                           try { parsed = JSON.parse(infoAgent.skillsJson) } catch {}
                           return parsed.length > 0
                             ? parsed.map((s, i) => (
-                                <span key={i} className="tag-pill text-[10px]">{s}</span>
+                                <span key={i} className="rounded-xl bg-mauve/10 px-2 py-1 font-body text-[10px] text-mauve/80 max-w-full">
+                                  <span className="truncate block max-w-[200px]">{skillName(s)}</span>
+                                  <span className="text-[8px] text-mauve/40">{s.length}c</span>
+                                </span>
                               ))
                             : <span className="font-body text-[10px] text-subtext/30">None</span>
                         })()}
