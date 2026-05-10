@@ -199,7 +199,7 @@ function DropCatcher() {
 
     if (hit) {
       spawnAgent(pendingDrop.agentId, [point.x, 0, point.z])
-      ;(window as any).__goobsWalkthroughEvent?.("agent_spawned")
+      ;(window as any).__goobsProgressionEvent?.("agent_deployed", pendingDrop.agentId)
       fetch(`/api/agents?id=${pendingDrop.agentId}`)
         .then((r) => r.json())
         .then((a) => {

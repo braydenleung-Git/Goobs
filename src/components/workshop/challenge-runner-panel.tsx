@@ -20,6 +20,7 @@ export interface RunResult {
   level: number
   runtimeEvents: string[]
   rationale: string
+  toolCalls?: Array<{ name: string; success: boolean }>
 }
 
 interface Props {
