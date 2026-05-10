@@ -61,7 +61,7 @@ export const CHALLENGES: ChallengeDef[] = [
   { id: "field-two-agents", title: "Field Two Agents", description: "Deploy 2 agents", tier: 2, xpReward: 60, trigger: "counter", counterCheck: (c) => c.deployCount >= 2, unlocks: ["filesystem"] },
   { id: "write-a-file", title: "Write a File", description: "Write 1 file using agent tools", tier: 2, xpReward: 50, trigger: "counter", counterCheck: (c) => c.writeFileCount >= 1 },
   { id: "exec-bash", title: "Execute Bash Command", description: "Run 1 bash command using agent tools", tier: 2, xpReward: 100, trigger: "counter", counterCheck: (c) => c.bashExecCount >= 1, unlocks: ["bash"] },
-  { id: "build-script", title: "Build a Script", description: "Write and execute a script using agent tools", tier: 3, xpReward: 200, trigger: "counter", counterCheck: (c) => c.buildScriptCount >= 1 },
+  { id: "build-script", title: "Build a Script", description: "Write and execute a script 3 times using agent tools", tier: 3, xpReward: 200, trigger: "counter", counterCheck: (c) => c.buildScriptCount >= 3 },
 ]
 
 function defaultState(): ProgressionState {

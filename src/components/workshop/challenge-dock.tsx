@@ -86,7 +86,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
     if (c.id === "field-two-agents") return `Agents deployed: ${state.counters.deployCount}/2`
     if (c.id === "write-a-file") return `Files written: ${state.counters.writeFileCount}/1`
     if (c.id === "exec-bash") return `Commands run: ${state.counters.bashExecCount}/1`
-    if (c.id === "build-script") return `Scripts built: ${state.counters.buildScriptCount}/1`
+    if (c.id === "build-script") return `Scripts built: ${state.counters.buildScriptCount}/3`
     return ""
   }
 

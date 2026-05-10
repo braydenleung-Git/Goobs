@@ -502,20 +502,12 @@ function AgentChatPanel() {
       }
 
       // fire progression events for tool calls from chat
-      const hasWrite = toolCallsAcc.some((tc) => tc.name === "write_file")
-      const hasBash = toolCallsAcc.some((tc) => tc.name === "exec_bash")
-      const hasBoth = hasWrite && hasBash
-      if (hasWrite) {
-        const count = toolCallsAcc.filter((tc) => tc.name === "write_file").length
-        for (let i = 0; i < count; i++) (window as any).__goobsProgressionEvent?.("tool_write_file")
-      }
-      if (hasBash) {
-        const count = toolCallsAcc.filter((tc) => tc.name === "exec_bash").length
-        for (let i = 0; i < count; i++) (window as any).__goobsProgressionEvent?.("tool_exec_bash")
-      }
-      if (hasBoth) {
-        ;(window as any).__goobsProgressionEvent?.("tool_build_script")
-      }
+      const writeCount = toolCallsAcc.filter((tc) => tc.name === "write_file").length
+      const bashCount = toolCallsAcc.filter((tc) => tc.name === "exec_bash").length
+      for (let i = 0; i < writeCount; i++) (window as any).__goobsProgressionEvent?.("tool_write_file")
+      for (let i = 0; i < bashCount; i++) (window as any).__goobsProgressionEvent?.("tool_exec_bash")
+      const buildPairs = Math.min(writeCount, bashCount)
+      for (let i = 0; i < buildPairs; i++) (window as any).__goobsProgressionEvent?.("tool_build_script")
     } catch {
       setChatLogs((prev) => ({
         ...prev,
