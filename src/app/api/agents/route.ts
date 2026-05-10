@@ -25,8 +25,14 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
-  const agent = await prisma.agentProfile.create({ data: parsed.data })
-  return NextResponse.json(agent, { status: 201 })
+  try {
+    const agent = await prisma.agentProfile.create({
+      data: { id: crypto.randomUUID(), ...parsed.data },
+    })
+    return NextResponse.json(agent, { status: 201 })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Create failed" }, { status: 500 })
+  }
 }
 
 export async function PATCH(request: NextRequest) {
