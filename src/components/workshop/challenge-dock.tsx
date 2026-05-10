@@ -51,10 +51,19 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
     return () => clearInterval(interval)
   }, [])
 
-  const t1Challenges = CHALLENGES.filter((c) => c.tier === 1)
-  const t2Challenges = CHALLENGES.filter((c) => c.tier === 2)
+  const tiers = [1, 2, 3] as Tier[]
+  const visibleTiers = tiers.filter((t) => t <= state.tier)
   const completedCount = state.completedChallenges.length
   const totalChallenges = CHALLENGES.length
+
+  const tierLabels: Record<number, string> = { 1: "Onboarding", 2: "Tools", 3: "Automation" }
+
+  const counterLabel = (c: typeof CHALLENGES[number]) => {
+    if (c.id === "field-two-agents") return `Agents deployed: ${state.counters.deployCount}/2`
+    if (c.id === "write-a-file") return `Files written: ${state.counters.writeFileCount}/1`
+    if (c.id === "exec-bash") return `Commands run: ${state.counters.bashExecCount}/1`
+    return ""
+  }
 
   return (
     <>
@@ -85,66 +94,39 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
           </div>
 
           <div className="p-3 space-y-2">
-            {/* Tier 1 */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-body text-[10px] text-subtext/40 uppercase tracking-wider">Onboarding</span>
-              <TierBadge tier={1} />
-              {state.tier > 1 && <span className="rounded-full bg-green/10 px-1.5 py-0.5 font-body text-[8px] text-green">done</span>}
-            </div>
-            {t1Challenges.map((c) => {
-              const done = state.completedChallenges.includes(c.id)
-              const active = !done && state.tier >= c.tier
+            {visibleTiers.map((tier) => {
+              const challenges = CHALLENGES.filter((c) => c.tier === tier)
+              const allDone = challenges.every((c) => state.completedChallenges.includes(c.id))
               return (
-                <div key={c.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
-                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green/20 text-green" : active ? "bg-blue/20 text-blue" : "bg-white/5 text-subtext/30"}`}>
-                    {done ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    ) : (
-                      <span>{t1Challenges.indexOf(c) + 1}</span>
-                    )}
+                <div key={tier}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-body text-[10px] text-subtext/40 uppercase tracking-wider">{tierLabels[tier]}</span>
+                    <TierBadge tier={tier} />
+                    {allDone && <span className="rounded-full bg-green/10 px-1.5 py-0.5 font-body text-[8px] text-green">done</span>}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-display text-xs font-bold ${done ? "text-green" : active ? "text-text" : "text-subtext/50"}`}>{c.title}</div>
-                    <div className="font-body text-[10px] text-subtext/50 mt-0.5">{done ? `+${c.xpReward} XP` : c.description}</div>
-                  </div>
-                </div>
-              )
-            })}
-
-            {/* Tier 2 */}
-            <div className="flex items-center gap-2 mt-3 mb-1 pt-2 border-t border-white/5">
-              <span className="font-body text-[10px] text-subtext/40 uppercase tracking-wider">Tools</span>
-              <TierBadge tier={2} />
-              {state.unlocks.bash && <span className="rounded-full bg-green/10 px-1.5 py-0.5 font-body text-[8px] text-green">unlocked</span>}
-            </div>
-            {t2Challenges.map((c) => {
-              const done = state.completedChallenges.includes(c.id)
-              const active = !done && state.tier >= c.tier
-              const locked = state.tier < c.tier
-              return (
-                <div key={c.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
-                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green/20 text-green" : active ? "bg-blue/20 text-blue" : "bg-white/5 text-subtext/30"}`}>
-                    {done ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    ) : locked ? (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-subtext/30">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
-                      </svg>
-                    ) : (
-                      <span>{t1Challenges.length + t2Challenges.indexOf(c) + 1}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-display text-xs font-bold ${done ? "text-green" : active ? "text-text" : "text-subtext/50"}`}>{c.title}</div>
-                    <div className="font-body text-[10px] text-subtext/50 mt-0.5">
-                      {done ? `+${c.xpReward} XP` : locked ? `Unlocks at Tier 2` : c.id === "field-two-agents" ? `Agents deployed: ${state.counters.deployCount}/2` : `Files written: ${state.counters.writeFileCount}/2`}
-                    </div>
-                  </div>
-                  {!done && active && <span className="flex h-2 w-2 rounded-full bg-blue animate-pulse shrink-0" />}
+                  {challenges.map((c, ci) => {
+                    const done = state.completedChallenges.includes(c.id)
+                    const active = !done && state.tier >= c.tier
+                    return (
+                      <div key={c.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green/20 text-green" : active ? "bg-blue/20 text-blue" : "bg-white/5 text-subtext/30"}`}>
+                          {done ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <span>{ci + 1}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-display text-xs font-bold ${done ? "text-green" : active ? "text-text" : "text-subtext/50"}`}>{c.title}</div>
+                          <div className="font-body text-[10px] text-subtext/50 mt-0.5">{done ? `+${c.xpReward} XP` : counterLabel(c) || c.description}</div>
+                        </div>
+                        {!done && active && <span className="flex h-2 w-2 rounded-full bg-blue animate-pulse shrink-0" />}
+                      </div>
+                    )
+                  })}
+                  {tier < visibleTiers[visibleTiers.length - 1] && <div className="mt-2 mb-1 border-t border-white/5" />}
                 </div>
               )
             })}

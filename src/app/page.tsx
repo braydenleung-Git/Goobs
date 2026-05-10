@@ -97,6 +97,10 @@ function WorkshopContent() {
     for (let i = 0; i < writeCalls.length; i++) {
       ;(window as any).__goobsProgressionEvent?.("tool_write_file")
     }
+    const bashCalls = result.toolCalls?.filter((tc) => tc.name === "exec_bash" && tc.success) ?? []
+    for (let i = 0; i < bashCalls.length; i++) {
+      ;(window as any).__goobsProgressionEvent?.("tool_exec_bash")
+    }
     progressRef.current?.refresh()
   }, [setAgentAnimation])
 
@@ -441,6 +445,14 @@ function AgentChatPanel() {
           ...prev,
           [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)", toolCalls: data.toolCalls }],
         }))
+        const writeCalls = (data.toolCalls || []).filter((tc: any) => tc.name === "write_file")
+        for (let i = 0; i < writeCalls.length; i++) {
+          ;(window as any).__goobsProgressionEvent?.("tool_write_file")
+        }
+        const bashCalls = (data.toolCalls || []).filter((tc: any) => tc.name === "exec_bash")
+        for (let i = 0; i < bashCalls.length; i++) {
+          ;(window as any).__goobsProgressionEvent?.("tool_exec_bash")
+        }
       }
 
       if (!chatSentRef.current) {
