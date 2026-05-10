@@ -346,25 +346,25 @@ function SceneClickCatcher() {
   return null
 }
 
-function CameraController() {
+function CameraController({ controlsRef }: { controlsRef: React.MutableRefObject<any> }) {
   const { selectedInstanceId, agents } = useRuntimeState()
-  const { camera, controls } = useThree()
-  const controlsRef = controls as any
+  const { camera } = useThree()
 
   useFrame(() => {
-    if (!controlsRef?.target) return
+    const ctrl = controlsRef.current
+    if (!ctrl?.target) return
     const agent = selectedInstanceId ? agents.find((a) => a.instanceId === selectedInstanceId) : undefined
     let tx = 0, tz = 0
     if (agent) {
       tx = agent.position[0]
       tz = agent.position[2]
     }
-    controlsRef.target.lerp(new THREE.Vector3(tx, 0.4, tz), 0.06)
+    ctrl.target.lerp(new THREE.Vector3(tx, 0.4, tz), 0.06)
     camera.position.lerp(
       agent ? new THREE.Vector3(tx + 3, 3.5, tz + 3) : new THREE.Vector3(8, 8, 8),
       0.06,
     )
-    controlsRef.update()
+    ctrl.update()
   })
 
   return null
@@ -474,6 +474,7 @@ function DropPreview() {
 
 export function WorkshopScene() {
   const { agents, agentMeta } = useRuntimeState()
+  const controlsRef = useRef<any>(null)
 
   const stored = typeof window !== "undefined" ? localStorage.getItem("goobs-progress") : null
   let unlockedWorkstations: string[] = ["computer"]
@@ -491,7 +492,7 @@ export function WorkshopScene() {
       }}
     >
       <SceneClickCatcher />
-      <CameraController />
+      <CameraController controlsRef={controlsRef} />
       <DropCatcher />
       <DropPreview />
       <ambientLight intensity={0.5} />
@@ -530,6 +531,7 @@ export function WorkshopScene() {
       ))}
 
       <OrbitControls
+        ref={controlsRef}
         enablePan={false}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 2.2}
