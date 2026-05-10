@@ -27,7 +27,14 @@ export interface ChatRunOutput {
   toolCalls?: ToolCall[]
 }
 
-const FALLBACK_MODEL = "OpenCode/deepseek-v4-flash"
+const FALLBACK_MODELS: ModelInfo[] = [
+  { id: "OpenCode/deepseek-v4-flash", name: "DeepSeek V4 Flash (via bifrost)", capabilities: ["text"] },
+  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", capabilities: ["text"] },
+  { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", capabilities: ["text"] },
+  { id: "gpt-4o", name: "GPT-4o", capabilities: ["text"] },
+  { id: "gpt-4o-mini", name: "GPT-4o Mini", capabilities: ["text"] },
+  { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", capabilities: ["text"] },
+]
 
 async function fetchWithBase(path: string, init?: RequestInit): Promise<Response> {
   const { baseUrl, apiKey } = await getProviderRuntimeConfig()
@@ -48,11 +55,13 @@ export async function listModels(): Promise<ModelInfo[]> {
       capabilities: [],
     }))
     if (models.length === 0) throw new Error("Empty model list")
+    const ids = new Set(models.map((m) => m.id))
+    for (const fb of FALLBACK_MODELS) {
+      if (!ids.has(fb.id)) models.push(fb)
+    }
     return models
   } catch {
-    return [
-      { id: FALLBACK_MODEL, name: "DeepSeek V4 Flash (fallback)", capabilities: ["text"] },
-    ]
+    return FALLBACK_MODELS
   }
 }
 
