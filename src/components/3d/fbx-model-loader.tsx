@@ -61,19 +61,16 @@ export function FBXModelLoader({
         })
       }
 
-      // Remove duplicate meshes: if both skinned and static meshes exist, hide static ones
-      let hasSkinned = false
+      // Remove duplicate meshes: keep only "Cube" (child of Armature) if it exists
+      const meshes: THREE.Mesh[] = []
       fbx.traverse((child) => {
-        if (child instanceof THREE.Mesh && (child as any).geometry?.attributes?.skinIndex) {
-          hasSkinned = true
-        }
+        if (child instanceof THREE.Mesh) meshes.push(child)
       })
-      if (hasSkinned) {
-        fbx.traverse((child) => {
-          if (child instanceof THREE.Mesh && !(child as any).geometry?.attributes?.skinIndex) {
-            child.visible = false
-          }
-        })
+      const cubeMesh = meshes.find((m) => m.name === "Cube")
+      if (cubeMesh) {
+        for (const m of meshes) {
+          m.visible = m === cubeMesh
+        }
       }
 
       // Store the model
