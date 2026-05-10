@@ -20,12 +20,15 @@ interface RuntimeState {
   agents: AgentSceneState[]
   selectedAgentId: string | null
   agentMeta: Record<string, AgentMeta>
+  pendingDrop: { agentId: string; screenX: number; screenY: number } | null
   setAgentAnimation: (agentId: string, state: AnimationState) => void
   routeAgent: (agentId: string, workstationId: string) => void
-  spawnAgent: (agentId: string) => void
+  spawnAgent: (agentId: string, position?: [number, number, number]) => void
   clearScene: () => void
   selectAgent: (agentId: string | null) => void
   updateAgentMeta: (agentId: string, meta: AgentMeta) => void
+  requestDrop: (agentId: string, screenX: number, screenY: number) => void
+  clearDrop: () => void
 }
 
 const RuntimeStateContext = createContext<RuntimeState | null>(null)
@@ -43,14 +46,22 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
   const [agents, setAgents] = useState<AgentSceneState[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   const [agentMeta, setAgentMeta] = useState<Record<string, AgentMeta>>({})
+  const [pendingDrop, setPendingDrop] = useState<{ agentId: string; screenX: number; screenY: number } | null>(null)
 
-  const spawnAgent = useCallback((agentId: string) => {
-    const index = spawnIndex++
-    const pos: [number, number, number] = [index * 1.5 - 2, 0, 0]
-    setAgents((prev) => [
-      ...prev,
-      { agentId, animationState: "idle", position: pos },
-    ])
+  const spawnAgent = useCallback((agentId: string, position?: [number, number, number]) => {
+    if (position) {
+      setAgents((prev) => [
+        ...prev,
+        { agentId, animationState: "idle", position },
+      ])
+    } else {
+      const index = spawnIndex++
+      const pos: [number, number, number] = [index * 1.5 - 2, 0, 0]
+      setAgents((prev) => [
+        ...prev,
+        { agentId, animationState: "idle", position: pos },
+      ])
+    }
   }, [])
 
   const setAgentAnimation = useCallback((agentId: string, state: AnimationState) => {
@@ -85,18 +96,29 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     setAgentMeta((prev) => ({ ...prev, [agentId]: meta }))
   }, [])
 
+  const requestDrop = useCallback((agentId: string, screenX: number, screenY: number) => {
+    setPendingDrop({ agentId, screenX, screenY })
+  }, [])
+
+  const clearDrop = useCallback(() => {
+    setPendingDrop(null)
+  }, [])
+
   return (
     <RuntimeStateContext.Provider
       value={{
         agents,
         selectedAgentId,
         agentMeta,
+        pendingDrop,
         setAgentAnimation,
         routeAgent,
         spawnAgent,
         clearScene,
         selectAgent,
         updateAgentMeta,
+        requestDrop,
+        clearDrop,
       }}
     >
       {children}

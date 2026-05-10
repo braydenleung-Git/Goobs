@@ -3,7 +3,8 @@
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber"
 import { OrbitControls, Grid, Html } from "@react-three/drei"
 import { useRuntimeState } from "./runtime-state-adapter"
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
+import * as THREE from "three"
 
 function AgentCharacter({
   agentId,
@@ -136,6 +137,53 @@ function SceneClickCatcher() {
   return null
 }
 
+function DropCatcher() {
+  const { pendingDrop, clearDrop, spawnAgent, agentMeta, updateAgentMeta } = useRuntimeState()
+  const { camera, gl } = useThree()
+  const processed = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!pendingDrop) {
+      processed.current = null
+      return
+    }
+    if (processed.current === pendingDrop.agentId) return
+    processed.current = pendingDrop.agentId
+
+    const rect = gl.domElement.getBoundingClientRect()
+    const ndcX = ((pendingDrop.screenX - rect.left) / rect.width) * 2 - 1
+    const ndcY = -((pendingDrop.screenY - rect.top) / rect.height) * 2 + 1
+
+    const raycaster = new THREE.Raycaster()
+    raycaster.setFromCamera(new THREE.Vector3(ndcX, ndcY), camera)
+
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    const point = new THREE.Vector3()
+    const hit = raycaster.ray.intersectPlane(plane, point)
+
+    if (hit) {
+      spawnAgent(pendingDrop.agentId, [point.x, 0, point.z])
+      fetch(`/api/agents?id=${pendingDrop.agentId}`)
+        .then((r) => r.json())
+        .then((a) => {
+          updateAgentMeta(pendingDrop.agentId, {
+            name: a.name || pendingDrop.agentId,
+            color: a.modelColorHex || "#89b4fa",
+          })
+        })
+        .catch(() => {
+          updateAgentMeta(pendingDrop.agentId, {
+            name: pendingDrop.agentId,
+            color: "#89b4fa",
+          })
+        })
+    }
+    clearDrop()
+  }, [pendingDrop, clearDrop, spawnAgent, camera, gl, agentMeta, updateAgentMeta])
+
+  return null
+}
+
 export function WorkshopScene() {
   const { agents, agentMeta } = useRuntimeState()
 
@@ -155,6 +203,7 @@ export function WorkshopScene() {
       }}
     >
       <SceneClickCatcher />
+      <DropCatcher />
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 10, 5]} intensity={0.7} />
       <directionalLight position={[-5, 5, -5]} intensity={0.2} />

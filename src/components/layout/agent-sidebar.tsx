@@ -1,138 +1,157 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
-import { useRuntimeState } from "@/components/scene/runtime-state-adapter"
+import { useState, useEffect, useCallback } from "react"
+
+interface AgentSummary {
+  id: string
+  name: string
+  modelColorHex: string
+  defaultModel: string
+  skillsJson: string
+  systemPrompt: string
+  isPrebuilt: boolean
+}
 
 export function AgentSidebar() {
-  const { selectedAgentId, selectAgent, agents, agentMeta, setAgentAnimation, routeAgent } =
-    useRuntimeState()
-  const [message, setMessage] = useState("")
-  const [chatLog, setChatLog] = useState<Array<{ role: "agent" | "user"; text: string }>>([])
+  const [agents, setAgents] = useState<AgentSummary[]>([])
+  const [hovered, setHovered] = useState(false)
+  const [selectedInfo, setSelectedInfo] = useState<string | null>(null)
 
-  if (!selectedAgentId) return null
+  useEffect(() => {
+    fetch("/api/agents")
+      .then((r) => r.json())
+      .then(setAgents)
+      .catch(() => {})
+  }, [])
 
-  const agent = agents.find((a) => a.agentId === selectedAgentId)
-  const meta = agentMeta[selectedAgentId]
-  if (!agent || !meta) return null
+  const handleDragStart = useCallback((e: React.DragEvent, agentId: string) => {
+    e.dataTransfer.setData("text/plain", agentId)
+    e.dataTransfer.effectAllowed = "copy"
+  }, [])
 
-  const stateColor =
-    agent.animationState === "celebrate"
-      ? "#a6e3a1"
-      : agent.animationState === "error"
-        ? "#f38ba8"
-        : agent.animationState === "walking"
-          ? "#fab387"
-          : agent.animationState === "thinking"
-            ? "#cba6f7"
-            : meta.color
-
-  const handleSend = (e: FormEvent) => {
-    e.preventDefault()
-    if (!message.trim()) return
-    setChatLog((prev) => [...prev, { role: "user", text: message }])
-    setChatLog((prev) => [
-      ...prev,
-      { role: "agent", text: `*${agent.animationState}* — "${message}"` },
-    ])
-    setMessage("")
-  }
+  const infoAgent = selectedInfo ? agents.find((a) => a.id === selectedInfo) : null
 
   return (
     <>
       <div
-        className="fixed inset-0 z-40"
-        onClick={() => selectAgent(null)}
+        className="fixed left-0 top-0 z-40 h-full w-3 cursor-pointer"
+        style={{ paddingTop: "4.5rem" }}
+        onMouseEnter={() => setHovered(true)}
       />
 
-      <aside
-        className="fixed right-0 top-0 z-50 flex h-full w-[340px] flex-col animate-slide-in-right"
-        style={{ paddingTop: "4.5rem", paddingBottom: "0.75rem", paddingRight: "0.75rem" }}
+      <div
+        className={`fixed left-0 top-0 z-50 h-full transition-all duration-200 ease-out ${
+          hovered ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ paddingTop: "4.5rem", paddingBottom: "0.75rem", paddingLeft: "0.75rem" }}
+        onMouseLeave={() => { setHovered(false); setSelectedInfo(null) }}
       >
-        <div
-          className="glass-strong glass-border-accent flex h-full flex-col rounded-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
-            <div
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: stateColor, boxShadow: `0 0 8px ${stateColor}40` }}
-            />
-            <div className="flex-1">
-              <h3 className="font-display text-base font-bold text-text">{meta.name}</h3>
-              <span className="font-body text-xs text-subtext capitalize">
-                {agent.animationState}
-              </span>
-            </div>
-            <button
-              onClick={() => selectAgent(null)}
-              className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs"
-            >
-              ✕
-            </button>
+        <div className="glass-strong glass-border-accent flex h-full w-72 flex-col rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+            <h3 className="font-display text-sm font-bold text-text">Agents</h3>
+            <span className="font-body text-[10px] text-subtext/50">{agents.length}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 border-b border-white/5 px-5 py-3">
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <div className="font-body text-[10px] text-subtext uppercase tracking-wider">State</div>
-              <div className="font-display text-sm text-text capitalize">{agent.animationState}</div>
-            </div>
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <div className="font-body text-[10px] text-subtext uppercase tracking-wider">Position</div>
-              <div className="font-display text-sm text-text">
-                {agent.workstationTarget || "idle"}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-5 py-3">
-            {chatLog.length === 0 ? (
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            {agents.length === 0 && (
               <div className="flex h-full items-center justify-center">
-                <p className="font-body text-xs text-subtext/60 text-center">
-                  Agent ready. Send a message or run a challenge.
+                <p className="font-body text-xs text-subtext/40 text-center px-4">
+                  No agents yet. Create one in the Create tab.
                 </p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {chatLog.map((msg, i) => (
+            )}
+
+            {agents.map((agent) => (
+              <div key={agent.id}>
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, agent.id)}
+                  onClick={() => setSelectedInfo(selectedInfo === agent.id ? null : agent.id)}
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer transition-all ${
+                    selectedInfo === agent.id
+                      ? "bg-white/10"
+                      : "hover:bg-white/5"
+                  }`}
+                >
                   <div
-                    key={i}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${
-                        msg.role === "user"
-                          ? "bg-blue/20 text-blue"
-                          : "bg-white/5 text-text"
-                      }`}
-                    >
-                      {msg.text}
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: agent.modelColorHex || "#89b4fa" }}
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-display text-sm font-bold text-text truncate">
+                        {agent.name}
+                      </span>
+                      {agent.isPrebuilt && (
+                        <span className="rounded-full bg-mauve/10 px-1.5 py-0.5 font-body text-[9px] text-mauve/60 uppercase tracking-wider">
+                          demo
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-body text-[10px] text-subtext/50 truncate">
+                      {agent.defaultModel}
                     </div>
                   </div>
-                ))}
+
+                  <svg
+                    className="h-3.5 w-3.5 shrink-0 text-subtext/20 group-hover:text-subtext/40 transition-colors"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="M5 15l7-7 7 7" />
+                  </svg>
+                </div>
+
+                {selectedInfo === agent.id && infoAgent && (
+                  <div className="mx-3 mb-2 rounded-xl bg-white/5 px-3 py-3 space-y-2.5 animate-fade-in">
+                    <div>
+                      <div className="font-body text-[9px] text-subtext/40 uppercase tracking-wider mb-1">System Prompt</div>
+                      <div className="font-body text-xs text-text/80 line-clamp-3">{infoAgent.systemPrompt}</div>
+                    </div>
+
+                    <div>
+                      <div className="font-body text-[9px] text-subtext/40 uppercase tracking-wider mb-1">Skills</div>
+                      <div className="flex flex-wrap gap-1">
+                        {(() => {
+                          let parsed: string[] = []
+                          try { parsed = JSON.parse(infoAgent.skillsJson) } catch {}
+                          return parsed.length > 0
+                            ? parsed.map((s, i) => (
+                                <span key={i} className="tag-pill text-[10px]">{s}</span>
+                              ))
+                            : <span className="font-body text-[10px] text-subtext/30">None</span>
+                        })()}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="font-body text-[9px] text-subtext/40 uppercase tracking-wider mb-1">Model</div>
+                      <div className="font-body text-xs text-text/70">{infoAgent.defaultModel}</div>
+                    </div>
+
+                    <div>
+                      <div className="font-body text-[9px] text-subtext/40 uppercase tracking-wider mb-1">Tools</div>
+                      <div className="font-body text-[10px] text-subtext/30">
+                        Tool integration coming soon
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
 
-          <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-white/5 px-4 py-3">
-            <input
-              className="input-glass flex-1 rounded-full px-4 py-2 text-sm"
-              placeholder="Message agent..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-blue/20 text-blue transition-all hover:bg-blue/30 hover:shadow-glow-blue"
-              disabled={!message.trim()}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </form>
+          <div className="border-t border-white/5 px-4 py-2.5">
+            <p className="font-body text-[10px] text-subtext/30 text-center">
+              Drag agents into the scene
+            </p>
+          </div>
         </div>
-      </aside>
+      </div>
     </>
   )
 }

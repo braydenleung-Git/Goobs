@@ -18,24 +18,24 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, agents } = useRuntimeState()
+  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, requestDrop } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
   const [activeTab, setActiveTab] = useState<TabId>("workshop")
   const [showConfig, setShowConfig] = useState(false)
   const [showChallenge, setShowChallenge] = useState(false)
   const [previewColor, setPreviewColor] = useState("#89b4fa")
 
-  useEffect(() => {
-    fetch("/api/agents")
-      .then((r) => r.json())
-      .then((list: Array<{ id: string; isPrebuilt: boolean; name: string; modelColorHex: string }>) => {
-        list.filter((a) => a.isPrebuilt).forEach((a) => {
-          spawnAgent(a.id)
-          updateAgentMeta(a.id, { name: a.name, color: a.modelColorHex || "#89b4fa" })
-        })
-      })
-      .catch(() => {})
-  }, [spawnAgent, updateAgentMeta])
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const agentId = e.dataTransfer.getData("text/plain")
+    if (!agentId) return
+    requestDrop(agentId, e.clientX, e.clientY)
+  }, [requestDrop])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "copy"
+  }, [])
 
   const handleAgentCreated = useCallback((agentId: string, name: string, color: string) => {
     spawnAgent(agentId)
@@ -90,7 +90,11 @@ function WorkshopContent() {
       <div className="relative flex-1">
         {activeTab === "workshop" ? (
           <>
-            <div className="absolute inset-0">
+            <div
+              className="absolute inset-0"
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+            >
               <WorkshopScene />
             </div>
 
