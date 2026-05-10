@@ -51,12 +51,11 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
     return () => clearInterval(interval)
   }, [])
 
-  const tiers = [1, 2, 3] as Tier[]
-  const visibleTiers = tiers.filter((t) => t <= state.tier)
+  const visibleTiers = ([1, 2, 3] as Tier[]).filter((t) => t === state.tier && CHALLENGES.some((c) => c.tier === t))
   const completedCount = state.completedChallenges.length
   const totalChallenges = CHALLENGES.length
 
-  const tierLabels: Record<number, string> = { 1: "Onboarding", 2: "Tools", 3: "Automation" }
+  const tierLabels: Record<number, string> = { 1: "Onboarding", 2: "Tools" }
 
   const counterLabel = (c: typeof CHALLENGES[number]) => {
     if (c.id === "field-two-agents") return `Agents deployed: ${state.counters.deployCount}/2`
