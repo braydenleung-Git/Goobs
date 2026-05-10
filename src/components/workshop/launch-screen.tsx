@@ -1,11 +1,33 @@
 "use client"
 
+import { useState } from "react"
+import { resetProgression } from "@/lib/progression/progression-engine"
+
 interface Props {
   onStart: () => void
   onSkip: () => void
 }
 
 export function LaunchScreen({ onStart, onSkip }: Props) {
+  const [resetting, setResetting] = useState(false)
+
+  const handleStart = async () => {
+    setResetting(true)
+    try {
+      await fetch("/api/demo/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "full" }),
+      })
+    } catch {}
+    localStorage.removeItem("goobs-walkthrough")
+    localStorage.removeItem("goobs-progress")
+    localStorage.removeItem("goobs-runs")
+    resetProgression()
+    setResetting(false)
+    onStart()
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-base">
       <div className="relative flex flex-col items-center gap-8 px-6">
@@ -29,8 +51,9 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
 
         <div className="flex flex-col items-center gap-3">
           <button
-            onClick={onStart}
-            className="group relative rounded-full px-8 py-3 font-display text-base font-bold transition-all duration-300 hover:scale-105"
+            onClick={handleStart}
+            disabled={resetting}
+            className="group relative rounded-full px-8 py-3 font-display text-base font-bold transition-all duration-300 hover:scale-105 disabled:opacity-50"
             style={{
               background: "linear-gradient(135deg, rgba(137,180,250,0.25), rgba(203,166,247,0.25))",
               border: "1px solid rgba(137,180,250,0.2)",
@@ -38,7 +61,7 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
               boxShadow: "0 0 30px rgba(137,180,250,0.15)",
             }}
           >
-            <span className="relative z-10">Start Walkthrough</span>
+            <span className="relative z-10">{resetting ? "Resetting..." : "Start Walkthrough"}</span>
           </button>
 
           <button

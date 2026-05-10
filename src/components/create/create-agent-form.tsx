@@ -38,6 +38,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [models, setModels] = useState<ModelOption[]>([])
   const [color, setColor] = useState(editingAgent?.modelColorHex ?? PRESET_COLORS[0])
   const [prefersImage, setPrefersImage] = useState(false)
+  const [toolProfile, setToolProfile] = useState("none")
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -81,7 +82,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
     })
     setEditingIndex(null)
     setEditContent("")
-    ;(window as any).__goobsWalkthroughEvent?.("skill_added")
+    ;(window as any).__goobsProgressionEvent?.("skill_added")
   }
 
   const removeSkill = (index: number) => {
@@ -102,7 +103,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
         name,
         systemPrompt,
         skillsJson: JSON.stringify(filteredSkills),
-        toolsJson: "[]",
+        toolsJson: JSON.stringify({ profile: toolProfile, selectedTools: toolProfile }),
         defaultModel: model,
         modelColorHex: color,
         prefersImageTasks: prefersImage,
@@ -130,7 +131,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           const agent = await res.json()
           setMessage(`"${name}" created!`)
           onAgentCreated?.(agent.id, name, color)
-          ;(window as any).__goobsWalkthroughEvent?.("agent_created")
+          ;(window as any).__goobsProgressionEvent?.("agent_created")
           setName("")
           setSystemPrompt("")
           setSkills([])
@@ -303,6 +304,36 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
             <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-subtext transition-all peer-checked:translate-x-4 peer-checked:bg-blue" />
           </label>
           <span className="font-body text-sm text-subtext">Image generation capable</span>
+        </div>
+
+        <div className="animate-fade-in stagger-4">
+          <label className="mb-1.5 block font-display text-sm font-bold text-text">
+            Tool Profile
+          </label>
+          <div className="relative">
+            <select
+              className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all"
+              style={{
+                background: "rgba(49, 50, 68, 0.4)",
+                border: "1px solid rgba(205, 214, 244, 0.08)",
+                color: "#cdd6f4",
+              }}
+              value={toolProfile}
+              onChange={(e) => setToolProfile(e.target.value)}
+            >
+              <option value="none" style={{ background: "#313244", color: "#cdd6f4" }}>None</option>
+              <option value="read_only" style={{ background: "#313244", color: "#cdd6f4" }}>Read Only</option>
+              <option value="read_write" style={{ background: "#313244", color: "#cdd6f4" }}>Read + Write</option>
+              <option value="full" style={{ background: "#313244", color: "#cdd6f4" }}>Full (includes Bash)</option>
+            </select>
+            <svg
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-subtext/60"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+          <p className="mt-1 font-body text-[10px] text-subtext/40">Unlocked through progression (Tier 2+)</p>
         </div>
 
         <button

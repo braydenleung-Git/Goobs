@@ -13,15 +13,23 @@ export async function POST(request: NextRequest) {
     await prisma.challengeRun.deleteMany()
     await prisma.challengeRewardEvent.deleteMany()
 
-    if (scope === "workspaces" || scope === "full") {
+    if (scope === "full") {
+      await prisma.progressState.deleteMany()
+      await prisma.workstationState.deleteMany()
+      const agents = await prisma.agentProfile.findMany({ select: { id: true } })
+      await prisma.agentProfile.deleteMany()
+      await Promise.all(agents.map((a) => cleanWorkspace(a.id).catch(() => {})))
+    } else if (scope === "workspaces") {
       const agents = await prisma.agentProfile.findMany({ select: { id: true } })
       await Promise.all(agents.map((a) => cleanWorkspace(a.id).catch(() => {})))
     }
 
     const message =
-      scope === "transient"
-        ? "Transient state cleared"
-        : "Transient state and workspaces cleared"
+      scope === "full"
+        ? "Full reset complete"
+        : scope === "workspaces"
+          ? "Transient state and workspaces cleared"
+          : "Transient state cleared"
 
     return NextResponse.json({ status: "ok", message, scope })
   } catch (err: any) {

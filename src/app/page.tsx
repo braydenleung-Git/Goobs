@@ -15,7 +15,7 @@ import { DemoControls } from "@/components/workshop/demo-controls"
 import { LaunchScreen } from "@/components/workshop/launch-screen"
 import { ChallengeDock } from "@/components/workshop/challenge-dock"
 import { skillName } from "@/lib/skills/skill-name"
-import { getWalkthroughState, setWalkthroughStarted, processWalkthroughReward, WALKTHROUGH_STEPS, type WalkthroughEventType } from "@/lib/walkthrough/walkthrough-engine"
+import { dispatchProgressionEvent, resetProgression, getProgressionState, CHALLENGES, type ProgressionEventType } from "@/lib/progression/progression-engine"
 
 const WorkshopScene = dynamic(
   () => import("@/components/scene/workshop-scene").then((m) => ({ default: m.WorkshopScene })),
@@ -30,13 +30,8 @@ function WorkshopContent() {
   const [showChallenge, setShowChallenge] = useState(false)
   const [previewColor, setPreviewColor] = useState("#89b4fa")
   const [showLaunch, setShowLaunch] = useState(true)
-  const [toasts, setToasts] = useState<Array<{ id: string; step: (typeof WALKTHROUGH_STEPS)[0]; level: number }>>([])
+  const [toasts, setToasts] = useState<Array<{ id: string; title: string; subtitle: string }>>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  useEffect(() => {
-    const state = getWalkthroughState()
-    if (state.started) setShowLaunch(false)
-  }, [])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -99,28 +94,30 @@ function WorkshopContent() {
         localStorage.setItem("goobs-progress", JSON.stringify(p))
       }
     }
+    const writeCalls = result.toolCalls?.filter((tc) => tc.name === "write_file" && tc.success) ?? []
+    for (let i = 0; i < writeCalls.length; i++) {
+      ;(window as any).__goobsProgressionEvent?.("tool_write_file")
+    }
     progressRef.current?.refresh()
   }, [setAgentAnimation])
 
-  const handleWalkthroughEvent = useCallback((type: WalkthroughEventType) => {
-    const step = WALKTHROUGH_STEPS.find((s) => s.trigger === type)
-    if (!step) return
-    const state = getWalkthroughState()
-    if (state.completed.includes(step.id)) return
-    const { xpReward, level } = processWalkthroughReward(step.id)
-    const toastId = crypto.randomUUID()
-    setToasts((prev) => [...prev, { id: toastId, step, level }])
+  const handleProgressionEvent = useCallback((type: ProgressionEventType, data?: string) => {
+    const delta = dispatchProgressionEvent({ type, agentId: data })
+    if (delta.toast) {
+      const toastId = crypto.randomUUID()
+      setToasts((prev) => [...prev, { id: toastId, title: delta.toast!.title, subtitle: delta.toast!.subtitle }])
+    }
     progressRef.current?.refresh()
   }, [])
 
   useEffect(() => {
-    ;(window as any).__goobsWalkthroughEvent = handleWalkthroughEvent
-    return () => { delete (window as any).__goobsWalkthroughEvent }
-  }, [handleWalkthroughEvent])
+    ;(window as any).__goobsProgressionEvent = handleProgressionEvent
+    return () => { delete (window as any).__goobsProgressionEvent }
+  }, [handleProgressionEvent])
 
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
-      {showLaunch && <LaunchScreen onStart={() => { setWalkthroughStarted(); setShowLaunch(false) }} onSkip={() => setShowLaunch(false)} />}
+      {showLaunch && <LaunchScreen onStart={() => setShowLaunch(false)} onSkip={() => { resetProgression(); setShowLaunch(false) }} />}
       <TopNav activeTab={activeTab} onTabChange={setActiveTab} onOpenConfig={() => setShowConfig(true)} />
 
       <div className="relative flex-1">
@@ -342,7 +339,7 @@ function AgentChatPanel() {
 
       if (!chatSentRef.current) {
         chatSentRef.current = true
-        ;(window as any).__goobsWalkthroughEvent?.("chat_sent")
+        ;(window as any).__goobsProgressionEvent?.("chat_sent")
       }
 
       if (!fullText) {
