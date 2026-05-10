@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { getProgressionState, CHALLENGES, type Tier } from "@/lib/progression/progression-engine"
 
 interface Toast {
@@ -16,17 +16,41 @@ interface Props {
 }
 
 function DockToast({ toast, onDone }: { toast: Toast; onDone: () => void }) {
+  const [progress, setProgress] = useState(100)
+  const doneRef = useRef(onDone)
+  doneRef.current = onDone
+
   useEffect(() => {
-    const timer = setTimeout(onDone, 4000)
-    return () => clearTimeout(timer)
-  }, [onDone])
+    const duration = 3000
+    const start = performance.now()
+    let raf: number
+
+    const tick = (now: number) => {
+      const elapsed = now - start
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
+      setProgress(remaining)
+      if (remaining <= 0) {
+        doneRef.current()
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   return (
-    <div className="animate-slide-up-fade rounded-2xl glass-strong glass-border-accent px-5 py-3 flex items-center gap-3 min-w-[240px] shadow-2xl">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green/20 text-base">🎉</span>
-      <div className="flex-1 min-w-0">
-        <div className="font-display text-sm font-bold text-green">{toast.title}</div>
-        <div className="font-body text-xs text-subtext/80 mt-0.5">{toast.subtitle}</div>
+    <div className="animate-slide-up-fade rounded-2xl glass-strong glass-border-accent overflow-hidden shadow-2xl">
+      <div className="px-5 py-3 flex items-center gap-3 min-w-[240px]">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green/20 text-base">🎉</span>
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-sm font-bold text-green">{toast.title}</div>
+          <div className="font-body text-xs text-subtext/80 mt-0.5">{toast.subtitle}</div>
+        </div>
+      </div>
+      <div className="h-0.5 w-full bg-white/5">
+        <div className="h-full bg-green/40 transition-none" style={{ width: `${progress}%` }} />
       </div>
     </div>
   )
