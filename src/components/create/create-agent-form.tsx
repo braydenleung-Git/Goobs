@@ -26,15 +26,14 @@ interface Props {
   onUpdated?: () => void
 }
 
-const PASTEL_SKIN = ["#f5c2e7", "#fab387", "#f9e2af", "#cdd6f4"]
-const PASTEL_SHIRT = ["#89b4fa", "#a6e3a1", "#cba6f7", "#94e2d5", "#f9e2af", "#f38ba8"]
-const PASTEL_PANTS = ["#6c7086", "#585b70", "#89b4fa", "#a6e3a1", "#45475a"]
+const SKIN_COLORS = ["#f5c2e7", "#fab387", "#f9e2af", "#cdd6f4", "#e8b4a0", "#d4a08a", "#c4957a", "#b8846a"]
+const PASTEL_COLORS = ["#89b4fa", "#a6e3a1", "#cba6f7", "#94e2d5", "#f9e2af", "#f5c2e7", "#fab387", "#f38ba8", "#b4befe", "#a6adc8"]
 
 function parseColors(agentColorsJson?: string): { skin: string; shirt: string; pants: string } {
   if (agentColorsJson) {
-    try { return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086", ...JSON.parse(agentColorsJson) } } catch {}
+    try { return { skin: SKIN_COLORS[0], shirt: PASTEL_COLORS[0], pants: PASTEL_COLORS[3], ...JSON.parse(agentColorsJson) } } catch {}
   }
-  return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" }
+  return { skin: SKIN_COLORS[0], shirt: PASTEL_COLORS[0], pants: PASTEL_COLORS[3] }
 }
 
 export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Props) {
@@ -163,10 +162,10 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           setName("")
           setSystemPrompt("")
           setSkills([])
-          setColor(PASTEL_SHIRT[0])
-          setSkinColor(PASTEL_SKIN[0])
-          setShirtColor(PASTEL_SHIRT[0])
-          setPantsColor(PASTEL_PANTS[0])
+          setColor(PASTEL_COLORS[0])
+          setSkinColor(SKIN_COLORS[0])
+          setShirtColor(PASTEL_COLORS[0])
+          setPantsColor(PASTEL_COLORS[3])
           setPrefersImage(false)
         } else {
           setMessage("Failed to create agent")
@@ -320,7 +319,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           <div>
             <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Skin</label>
             <div className="flex flex-wrap gap-2">
-              {PASTEL_SKIN.map((c) => (
+              {SKIN_COLORS.map((c) => (
                 <button key={c} type="button" onClick={() => setSkinColor(c)}
                   className="h-7 w-7 rounded-full transition-all duration-150"
                   style={{ backgroundColor: c, boxShadow: skinColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: skinColor === c ? "scale(1.15)" : "scale(1)" }} />
@@ -330,7 +329,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           <div>
             <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Shirt</label>
             <div className="flex flex-wrap gap-2">
-              {PASTEL_SHIRT.map((c) => (
+              {PASTEL_COLORS.map((c) => (
                 <button key={c} type="button" onClick={() => { setShirtColor(c); setColor(c) }}
                   className="h-7 w-7 rounded-full transition-all duration-150"
                   style={{ backgroundColor: c, boxShadow: shirtColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: shirtColor === c ? "scale(1.15)" : "scale(1)" }} />
@@ -340,7 +339,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           <div>
             <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Pants</label>
             <div className="flex flex-wrap gap-2">
-              {PASTEL_PANTS.map((c) => (
+              {PASTEL_COLORS.map((c) => (
                 <button key={c} type="button" onClick={() => setPantsColor(c)}
                   className="h-7 w-7 rounded-full transition-all duration-150"
                   style={{ backgroundColor: c, boxShadow: pantsColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: pantsColor === c ? "scale(1.15)" : "scale(1)" }} />

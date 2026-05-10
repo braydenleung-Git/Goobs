@@ -46,7 +46,7 @@ export function AgentsGrid({ onAgentCreated }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [editColor, setEditColor] = useState("#89b4fa")
-  const [editColors, setEditColors] = useState({ skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" })
+  const [editColors, setEditColors] = useState({ skin: "#f5c2e7", shirt: "#89b4fa", pants: "#94e2d5" })
 
   const load = useCallback(() => {
     fetch("/api/agents")
