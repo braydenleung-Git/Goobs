@@ -28,7 +28,7 @@ function AgentCharacter({
   if (entryRef.current === null) entryRef.current = Date.now()
 
   useFrame((_, delta) => {
-    if (!groupRef.current) return
+    if (!groupRef.current || entryRef.current === null) return
 
     const elapsed = Date.now() - entryRef.current
     if (elapsed < SPAWN_DURATION) {
