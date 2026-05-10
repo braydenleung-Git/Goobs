@@ -22,7 +22,7 @@ export interface ChallengeDef {
 }
 
 export interface Counters {
-  deployedAgentIds: string[]
+  deployCount: number
   writeFileCount: number
 }
 
@@ -56,12 +56,12 @@ export const CHALLENGES: ChallengeDef[] = [
   { id: "add-skill", title: "Add Skill", description: "Add a skill to your agent", tier: 1, xpReward: 30, trigger: "event", eventType: "skill_added" },
   { id: "deploy-workshop", title: "Deploy to Workshop", description: "Drag your agent into the scene", tier: 1, xpReward: 40, trigger: "event", eventType: "agent_deployed" },
   { id: "first-chat", title: "First Chat", description: "Send a message to your agent", tier: 1, xpReward: 50, trigger: "event", eventType: "chat_sent" },
-  { id: "field-two-agents", title: "Field Two Agents", description: "Deploy 2 unique agents", tier: 2, xpReward: 60, trigger: "counter", counterCheck: (c) => c.deployedAgentIds.length >= 2, unlocks: ["filesystem"] },
+  { id: "field-two-agents", title: "Field Two Agents", description: "Deploy 2 agents", tier: 2, xpReward: 60, trigger: "counter", counterCheck: (c) => c.deployCount >= 2, unlocks: ["filesystem"] },
   { id: "write-two-files", title: "Write Two Files", description: "Write 2 files using agent tools", tier: 2, xpReward: 100, trigger: "counter", counterCheck: (c) => c.writeFileCount >= 2, unlocks: ["bash"] },
 ]
 
 function defaultState(): ProgressionState {
-  return { tier: 1, xp: 0, completedChallenges: [], counters: { deployedAgentIds: [], writeFileCount: 0 }, unlocks: { filesystem: false, bash: false } }
+  return { tier: 1, xp: 0, completedChallenges: [], counters: { deployCount: 0, writeFileCount: 0 }, unlocks: { filesystem: false, bash: false } }
 }
 
 export function getProgressionState(): ProgressionState {
@@ -110,10 +110,8 @@ export function dispatchProgressionEvent(event: ProgressionEvent): ProgressionDe
   const delta: ProgressionDelta = { newChallenges: [], xpGained: 0, newUnlocks: [], tierChanged: false, newTier: state.tier }
 
   // update counters
-  if (event.type === "agent_deployed" && event.agentId) {
-    if (!state.counters.deployedAgentIds.includes(event.agentId)) {
-      state.counters.deployedAgentIds.push(event.agentId)
-    }
+  if (event.type === "agent_deployed") {
+    state.counters.deployCount += 1
   }
   if (event.type === "tool_write_file") {
     state.counters.writeFileCount += 1

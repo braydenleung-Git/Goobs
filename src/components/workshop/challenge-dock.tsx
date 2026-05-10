@@ -141,7 +141,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className={`font-display text-xs font-bold ${done ? "text-green" : active ? "text-text" : "text-subtext/50"}`}>{c.title}</div>
                     <div className="font-body text-[10px] text-subtext/50 mt-0.5">
-                      {done ? `+${c.xpReward} XP` : locked ? `Unlocks at Tier 2` : c.id === "field-two-agents" ? `Agents in scene: ${state.counters.deployedAgentIds.length}/2` : `Files written: ${state.counters.writeFileCount}/2`}
+                      {done ? `+${c.xpReward} XP` : locked ? `Unlocks at Tier 2` : c.id === "field-two-agents" ? `Agents deployed: ${state.counters.deployCount}/2` : `Files written: ${state.counters.writeFileCount}/2`}
                     </div>
                   </div>
                   {!done && active && <span className="flex h-2 w-2 rounded-full bg-blue animate-pulse shrink-0" />}

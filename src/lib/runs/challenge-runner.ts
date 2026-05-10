@@ -3,6 +3,7 @@ import { getChallengeBySlug } from "@/lib/challenges/catalog"
 import { runChatCompletion } from "@/lib/llm/openai-compatible-client"
 import { runAgent } from "@/lib/runtime/agent-runtime"
 import { ToolRegistry } from "@/lib/runtime/tool-registry"
+import { createSkillsTool } from "@/lib/runtime/tools/skills"
 import { createFilesystemTools } from "@/lib/runtime/tools/filesystem"
 import { createBashTool } from "@/lib/runtime/tools/bash"
 import { evaluateRun } from "@/lib/eval/evaluation-engine"
@@ -67,8 +68,10 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
   if (hasTools) {
     events.push("state:typing")
+    systemPrompt += `\n\nYou have access to tools. Use \`view_skills\` to see your skill definitions. Use \`write_file\` to create files and \`exec_bash\` to run them. Check existing files with \`read_file\` and \`list_files\` before creating new ones.`
 
     const registry = new ToolRegistry()
+    registry.register(createSkillsTool(input.agentId, agentSkills))
     registry.register(createFilesystemTools(input.agentId, runId))
     registry.register(createBashTool(input.agentId))
 
