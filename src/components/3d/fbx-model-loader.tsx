@@ -53,16 +53,12 @@ export function FBXModelLoader({
         fbx.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             const mat = child.material
+            const name = (child.name || (mat as any)?.name || "").trim().toLowerCase()
             if (mat) {
-              const matName = ((mat as any).name || "").trim()
-              const lower = matName.toLowerCase()
-              if (typeof window !== "undefined" && !(window as any).__fbxMaterialsLogged) {
-                console.log("FBX material:", matName)
-              }
               let match: string | undefined
-              if (lower === "skin") match = materialColors.skin
-              else if (lower === "shirt") match = materialColors.shirt
-              else if (lower === "pants") match = materialColors.pants
+              if (name.includes("skin")) match = materialColors.skin
+              else if (name.includes("shirt")) match = materialColors.shirt
+              else if (name.includes("pant")) match = materialColors.pants
               if (match) {
                 ;(mat as THREE.MeshStandardMaterial).color = new THREE.Color(match)
                 mat.needsUpdate = true
@@ -70,7 +66,6 @@ export function FBXModelLoader({
             }
           }
         })
-        if (typeof window !== "undefined") (window as any).__fbxMaterialsLogged = true
       }
 
       // Extract animations from NLA strips
