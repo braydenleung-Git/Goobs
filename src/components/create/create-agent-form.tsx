@@ -46,7 +46,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [editContent, setEditContent] = useState("")
 
   useEffect(() => {
-    fetch("/api/models")
+    fetch(`/api/models?t=${Date.now()}`)
       .then((r) => r.json())
       .then((list: ModelOption[]) => {
         setModels(list)

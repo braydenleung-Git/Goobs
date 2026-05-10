@@ -39,7 +39,7 @@ async function fetchWithBase(path: string, init?: RequestInit): Promise<Response
 
 export async function listModels(): Promise<ModelInfo[]> {
   try {
-    const res = await fetchWithBase("models")
+    const res = await fetchWithBase("models", { cache: "no-store" })
     if (!res.ok) throw new Error(`Model fetch returned ${res.status}`)
     const body = await res.json()
     const models: ModelInfo[] = (body.data || body || []).map((m: any) => ({

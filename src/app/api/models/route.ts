@@ -6,10 +6,13 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   try {
     const models = await listModels()
-    return NextResponse.json(models)
+    return NextResponse.json(models, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    })
   } catch {
-    return NextResponse.json([
-      { id: "OpenCode/deepseek-v4-flash", name: "DeepSeek V4 Flash (fallback)", capabilities: ["text"] },
-    ])
+    return NextResponse.json(
+      [{ id: "OpenCode/deepseek-v4-flash", name: "DeepSeek V4 Flash (fallback)", capabilities: ["text"] }],
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    )
   }
 }
