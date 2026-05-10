@@ -259,6 +259,19 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
               Model
             </label>
             <div className="relative">
+              {models.length === 0 ? (
+                <input
+                  className="w-full rounded-xl px-3 py-2 text-sm transition-all"
+                  style={{
+                    background: "rgba(49, 50, 68, 0.4)",
+                    border: "1px solid rgba(205, 214, 244, 0.08)",
+                    color: "#cdd6f4",
+                  }}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Enter model ID..."
+                />
+              ) : (
               <select
                 className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all"
                 style={{
@@ -275,6 +288,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
                   </option>
                 ))}
               </select>
+              )}
               <svg
                 className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-subtext/60"
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
