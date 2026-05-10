@@ -81,6 +81,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
     })
     setEditingIndex(null)
     setEditContent("")
+    ;(window as any).__goobsWalkthroughEvent?.("skill_added")
   }
 
   const removeSkill = (index: number) => {
@@ -129,6 +130,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           const agent = await res.json()
           setMessage(`"${name}" created!`)
           onAgentCreated?.(agent.id, name, color)
+          ;(window as any).__goobsWalkthroughEvent?.("agent_created")
           setName("")
           setSystemPrompt("")
           setSkills([])

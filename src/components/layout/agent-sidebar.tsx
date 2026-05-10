@@ -47,7 +47,7 @@ export function AgentSidebar() {
         style={{ paddingTop: "4.5rem", paddingBottom: "0.75rem", paddingLeft: "0.75rem" }}
         onMouseLeave={() => { setHovered(false); setSelectedInfo(null) }}
       >
-        <div className="glass-strong glass-border-accent flex h-full w-72 flex-col rounded-2xl overflow-hidden">
+        <div className="glass-strong glass-border-accent flex h-full w-60 flex-col rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
             <h3 className="font-display text-sm font-bold text-text">Agents</h3>
             <span className="font-body text-[10px] text-subtext/50">{agents.length}</span>
