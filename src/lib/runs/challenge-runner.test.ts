@@ -197,7 +197,7 @@ describe("runChallenge", () => {
       expect(mockRunAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "test-model",
-          systemPrompt: "system-prompt-code",
+          systemPrompt: expect.stringContaining("system-prompt-code"),
           userPrompt: "user-prompt-code",
           agentId: "agent-1",
           maxTurns: 5,

@@ -14,6 +14,9 @@ const ANIMATION_MAPPING = {
   attention_start: "Attention_Start",
   attention_loop: "Attention_Loop",
   idle_long: "lying_down_transistion",
+  thinking: "Attention_Loop",
+  error: "No_Pose",
+  typing: "Working",
   easter_egg: "67",
 }
 

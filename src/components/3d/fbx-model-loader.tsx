@@ -20,19 +20,42 @@ interface FBXModelLoaderProps {
   animationMapping?: AnimationMapping
   holdLastFrame?: boolean
   playReverse?: boolean
+  loop?: boolean
+  onAnimationFinished?: (state: string) => void
 }
 
-export function FBXModelLoader({ 
-  url, 
-  position = [0, 0, 0], 
-  scale = [1, 1, 1], 
+function resolveClipName(animations: THREE.AnimationClip[], targetName: string): THREE.AnimationClip | undefined {
+  const lower = targetName.toLowerCase()
+  const direct = animations.find((c) => c.name.toLowerCase().includes(lower))
+  if (direct) return direct
+  const aliases: Record<string, string[]> = {
+    "transistion": ["transition"],
+    "lying_down": ["lying_down_transistion"],
+  }
+  for (const [key, alts] of Object.entries(aliases)) {
+    if (lower.includes(key)) {
+      for (const alt of alts) {
+        const found = animations.find((c) => c.name.toLowerCase().includes(alt))
+        if (found) return found
+      }
+    }
+  }
+  return animations[0]
+}
+
+export function FBXModelLoader({
+  url,
+  position = [0, 0, 0],
+  scale = [1, 1, 1],
   rotation = [0, 0, 0],
   animationState = "idle",
   materialColors,
   onClick,
   animationMapping,
   holdLastFrame = false,
-  playReverse = false
+  playReverse = false,
+  loop = true,
+  onAnimationFinished,
 }: FBXModelLoaderProps) {
   const groupRef = useRef<THREE.Group>(null)
   const modelRef = useRef<THREE.Group | null>(null)
@@ -40,7 +63,9 @@ export function FBXModelLoader({
   const mixerRef = useRef<THREE.AnimationMixer | null>(null)
   const activeActionRef = useRef<THREE.AnimationAction | null>(null)
   const materialColorsRef = useRef(materialColors)
+  const onAnimationFinishedRef = useRef(onAnimationFinished)
   materialColorsRef.current = materialColors
+  onAnimationFinishedRef.current = onAnimationFinished
 
   function applyColorsToModel(root: THREE.Group, colors: Record<string, string>) {
     root.traverse((child) => {
@@ -80,14 +105,12 @@ export function FBXModelLoader({
         const animMixer = new THREE.AnimationMixer(fbx)
         mixerRef.current = animMixer
 
-        const targetAnimationName = animationMapping?.[animationState] || animationState
-
-        const initialClip = animationsRef.current.find((clip: THREE.AnimationClip) =>
-          clip.name.toLowerCase().includes(targetAnimationName.toLowerCase())
-        ) || animationsRef.current[0]
+        const targetName = animationMapping?.["idle"] || "idle"
+        const initialClip = resolveClipName(fbx.animations, targetName.toLowerCase())
 
         if (initialClip) {
           const action = animMixer.clipAction(initialClip)
+          action.setLoop(THREE.LoopRepeat, Infinity)
           action.play()
           activeActionRef.current = action
         }
@@ -113,68 +136,64 @@ export function FBXModelLoader({
     }
   }, [url])
 
-  // Re-apply colors when materialColors changes
   useEffect(() => {
     if (modelRef.current && materialColorsRef.current) {
       applyColorsToModel(modelRef.current, materialColorsRef.current)
     }
   }, [materialColors])
 
-  // Handle animation state changes
   useEffect(() => {
     if (!mixerRef.current || !animationsRef.current.length) return
 
-    // Get the target animation name from mapping or use the state directly
-    const targetAnimationName = animationMapping?.[animationState] || animationState
-    
-    const targetClip = animationsRef.current.find((clip: THREE.AnimationClip) => 
-      clip.name.toLowerCase().includes(targetAnimationName.toLowerCase())
-    )
+    const targetName = animationMapping?.[animationState] || animationState
+    const targetClip = resolveClipName(animationsRef.current, targetName.toLowerCase())
 
     if (targetClip) {
-      // Stop current action
       if (activeActionRef.current) {
         activeActionRef.current.fadeOut(0.5)
       }
-      
-      // Create new action
+
       const newAction = mixerRef.current.clipAction(targetClip)
-      
-      // Apply reverse playback if requested
+
       if (playReverse) {
         newAction.timeScale = -1
-        newAction.time = targetClip.duration // Start from end
+        newAction.time = targetClip.duration
+        newAction.setLoop(THREE.LoopOnce, 1)
+        newAction.clampWhenFinished = holdLastFrame
+      } else if (!loop) {
+        newAction.timeScale = 1
+        newAction.time = 0
+        newAction.setLoop(THREE.LoopOnce, 1)
+        newAction.clampWhenFinished = holdLastFrame
       } else {
         newAction.timeScale = 1
-        newAction.time = 0 // Start from beginning
-      }
-      
-      // Apply hold last frame if requested
-      if (holdLastFrame) {
-        newAction.setLoop(THREE.LoopOnce, 1)
-        newAction.clampWhenFinished = true
-      } else {
+        newAction.time = 0
         newAction.setLoop(THREE.LoopRepeat, Infinity)
         newAction.clampWhenFinished = false
       }
-      
-      newAction.reset().fadeIn(0.5).play()
-      activeActionRef.current = newAction
-    }
-  }, [animationState, holdLastFrame, playReverse, animationMapping])
 
-  // Update animation mixer
+      newAction.reset().fadeIn(0.5).play()
+
+      const handleFinish = () => {
+        onAnimationFinishedRef.current?.(animationState)
+      }
+
+      if (!loop || playReverse) {
+        ;(newAction as any).addEventListener("finished", handleFinish)
+      }
+      activeActionRef.current = newAction
+
+      return () => {
+        ;(newAction as any).removeEventListener("finished", handleFinish)
+      }
+    }
+  }, [animationState, holdLastFrame, playReverse, loop, animationMapping])
+
   useFrame((_, delta) => {
     if (mixerRef.current) {
       mixerRef.current.update(delta)
     }
   })
 
-  return (
-    <group 
-      ref={groupRef} 
-      onClick={onClick}
-    />
-  )
+  return <group ref={groupRef} onClick={onClick} />
 }
-

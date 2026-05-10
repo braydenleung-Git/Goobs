@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
 
-export type AnimationState = "idle" | "thinking" | "typing" | "celebrate" | "error" | "walking" | "idle_long" | "sitting" | "working" | "stand" | "easter_egg"
+export type AnimationState = "idle" | "thinking" | "typing" | "celebrate" | "error" | "walking" | "idle_long" | "sitting" | "working" | "stand" | "easter_egg" | "attention_start" | "attention_loop"
 
 export interface AgentSceneState {
   instanceId: string
@@ -27,6 +27,7 @@ interface RuntimeState {
   pendingDrop: { agentId: string; screenX: number; screenY: number } | null
   dropPreview: { screenX: number; screenY: number } | null
   setAgentAnimation: (agentId: string, state: AnimationState) => void
+  setInstanceAnimation: (instanceId: string, state: AnimationState) => void
   routeAgent: (agentId: string, workstationId: string) => void
   spawnAgent: (agentId: string, position?: [number, number, number]) => void
   clearScene: () => void
@@ -84,6 +85,12 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const setInstanceAnimation = useCallback((instanceId: string, state: AnimationState) => {
+    setAgents((prev) =>
+      prev.map((a) => (a.instanceId === instanceId ? { ...a, animationState: state } : a)),
+    )
+  }, [])
+
   const routeAgent = useCallback((agentId: string, workstationId: string) => {
     const target = WORKSTATION_POSITIONS[workstationId]
     if (!target) return
@@ -137,6 +144,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
         pendingDrop,
         dropPreview,
         setAgentAnimation,
+        setInstanceAnimation,
         routeAgent,
         spawnAgent,
         clearScene,

@@ -9,26 +9,22 @@ import { FBXModelLoader } from "../3d/fbx-model-loader"
 
 const WALK_SPEED = 3
 const SPAWN_DURATION = 400
-const IDLE_LONG_THRESHOLD = 60000 // 1 minute in milliseconds
-const SITTING_TO_WORKING_DURATION = 1500 // 1.5 seconds for 30-frame sitting animation at 24 FPS
-const REVERSE_SITTING_DURATION = 1500 // 1.5 seconds for reverse sitting animation
-const TASK_COMPLETION_CHECK_INTERVAL = 5000 // Check for task completion every 5 seconds while working
-const IDLE_TO_STAND_CHANCE = 0.01 // 10% chance per frame to transition from idle to stand
-const STAND_TO_EASTER_EGG_DURATION = 2000 // 2 seconds before transitioning from stand to easter_egg
-const EASTER_EGG_DURATION = 3000 // 3 seconds for easter egg animation before returning to idle
+const IDLE_LONG_DELAY = 60000
 
-// Custom animation mapping for FBX model NLA strips
 const ANIMATION_MAPPING = {
   stand: "No_Pose",
   idle: "Idle",
-  walking: "Walking",    
+  walking: "Walking",
   sitting: "Sitting_Transition",
   working: "Working",
   celebrate: "Finish_Task_1",
-  attention_start: "Attention_Start",     
-  attention_loop: "Attention_Loop",    
+  attention_start: "Attention_Start",
+  attention_loop: "Attention_Loop",
   idle_long: "lying_down_transistion",
-  easter_egg: "67"
+  thinking: "Attention_Loop",
+  error: "No_Pose",
+  typing: "Working",
+  easter_egg: "67",
 }
 
 function AgentCharacter({
@@ -40,7 +36,7 @@ function AgentCharacter({
   instanceId: string
   position: [number, number, number]
 }) {
-  const { agents, agentMeta, selectAgent, selectedInstanceId, setAgentAnimation } = useRuntimeState()
+  const { agents, agentMeta, selectAgent, selectedInstanceId, setInstanceAnimation } = useRuntimeState()
   const groupRef = useRef<THREE.Group>(null)
   const agent = agents.find((a) => a.instanceId === instanceId)
   const meta = agentMeta[agentId]
@@ -48,19 +44,75 @@ function AgentCharacter({
   const isSelected = selectedInstanceId === instanceId
   const target = agent?.targetPosition
   const entryRef = useRef<number | null>(null)
-  const idleStartTimeRef = useRef<number | null>(null)
-  const lastStateRef = useRef<string>(state)
-  const wasIdleLongRef = useRef<boolean>(false)
-  const sittingStartTimeRef = useRef<number | null>(null)
-  const workingStartTimeRef = useRef<number | null>(null)
-  const reverseSittingStartTimeRef = useRef<number | null>(null)
-  const taskCompletedRef = useRef<boolean>(false)
-  const standStartTimeRef = useRef<number | null>(null)
-  const idleRandomCheckRef = useRef<number>(0)
-  const easterEggStartTimeRef = useRef<number | null>(null)
+
+  const stateRef = useRef(state)
+  stateRef.current = state
+
+  const pendingStateRef = useRef<string | null>(null)
+  const idleLongInterruptedRef = useRef(false)
+  const prevSelectedRef = useRef(isSelected)
+  const arrivedRef = useRef(false)
 
   if (entryRef.current === null) entryRef.current = Date.now()
 
+  const isOneShot = !["idle", "walking", "working", "attention_loop", "thinking", "stand", "typing"].includes(state)
+  const playReverse = pendingStateRef.current !== null && state === "idle_long"
+
+  // Click handler
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    selectAgent(instanceId)
+  }, [instanceId, selectAgent])
+
+  // Selection → attention chain
+  useEffect(() => {
+    if (isSelected && !prevSelectedRef.current) {
+      const s = stateRef.current
+      if (s === "idle_long") {
+        idleLongInterruptedRef.current = true
+        pendingStateRef.current = "attention_start"
+        setInstanceAnimation(instanceId, "idle_long")
+      } else if (s !== "walking" && s !== "sitting" && s !== "working") {
+        setInstanceAnimation(instanceId, "attention_start")
+      }
+    } else if (!isSelected && prevSelectedRef.current) {
+      const s = stateRef.current
+      if (s === "attention_start" || s === "attention_loop") {
+        setInstanceAnimation(instanceId, "idle")
+      }
+    }
+    prevSelectedRef.current = isSelected
+  }, [isSelected, instanceId, setInstanceAnimation])
+
+  // Idle → idle_long timer
+  useEffect(() => {
+    if (state === "idle") {
+      const timer = setTimeout(() => {
+        setInstanceAnimation(instanceId, "idle_long")
+      }, IDLE_LONG_DELAY)
+      return () => clearTimeout(timer)
+    }
+  }, [state, instanceId, setInstanceAnimation])
+
+  // Animation chaining via onAnimationFinished
+  const handleAnimationFinished = useCallback((finishedState: string) => {
+    if (pendingStateRef.current) {
+      const next = pendingStateRef.current
+      pendingStateRef.current = null
+      idleLongInterruptedRef.current = false
+      setInstanceAnimation(instanceId, next as any)
+      return
+    }
+    if (finishedState === "attention_start") {
+      setInstanceAnimation(instanceId, "attention_loop")
+    } else if (finishedState === "sitting") {
+      setInstanceAnimation(instanceId, "working")
+    } else if (finishedState === "celebrate" || finishedState === "error") {
+      setInstanceAnimation(instanceId, "idle")
+    }
+  }, [instanceId, setInstanceAnimation])
+
+  // Movement + spawn scale
   useFrame((_, delta) => {
     if (!groupRef.current || entryRef.current === null) return
 
@@ -73,145 +125,26 @@ function AgentCharacter({
       groupRef.current.scale.setScalar(1)
     }
 
-    // Track state changes and timers
-    if (state !== lastStateRef.current) {
-      // State changed, reset tracking
-      wasIdleLongRef.current = lastStateRef.current === "idle_long"
-      lastStateRef.current = state
-      
-      // Reset idle tracking
-      if (state === "idle") {
-        idleStartTimeRef.current = Date.now()
-        taskCompletedRef.current = false
-      } else {
-        idleStartTimeRef.current = null
-      }
-      
-      // Reset sitting tracking
-      if (state === "sitting") {
-        sittingStartTimeRef.current = Date.now()
-      } else {
-        sittingStartTimeRef.current = null
-      }
-      
-      // Reset working tracking
-      if (state === "working") {
-        workingStartTimeRef.current = Date.now()
-      } else {
-        workingStartTimeRef.current = null
-      }
-      
-      // Reset reverse sitting tracking
-      if (state === "sitting" && lastStateRef.current === "working") {
-        reverseSittingStartTimeRef.current = Date.now()
-      } else if (state !== "sitting") {
-        reverseSittingStartTimeRef.current = null
-      }
-      
-      // Reset stand tracking
-      if (state === "stand") {
-        standStartTimeRef.current = Date.now()
-      } else {
-        standStartTimeRef.current = null
-      }
-      
-      // Reset easter egg tracking
-      if (state === "easter_egg") {
-        easterEggStartTimeRef.current = Date.now()
-      } else {
-        easterEggStartTimeRef.current = null
-      }
-      
-      // Reset idle random check when leaving idle
-      if (state !== "idle") {
-        idleRandomCheckRef.current = 0
-      }
-    }
-
-    // Handle idle to idle_long transition
-    if (state === "idle" && idleStartTimeRef.current) {
-      const idleDuration = Date.now() - idleStartTimeRef.current
-      if (idleDuration >= IDLE_LONG_THRESHOLD) {
-        setAgentAnimation(agentId, "idle_long")
-        idleStartTimeRef.current = null
-      }
-    }
-
-    // Handle random idle to stand transition (only if not lying down)
-    if (state === "idle" && !wasIdleLongRef.current) {
-      idleRandomCheckRef.current += delta
-      // Check every second to reduce performance impact
-      if (idleRandomCheckRef.current >= 1) {
-        idleRandomCheckRef.current = 0
-        if (Math.random() < IDLE_TO_STAND_CHANCE) {
-          setAgentAnimation(agentId, "stand")
-        }
-      }
-    }
-
-    // Handle stand to easter_egg transition
-    if (state === "stand" && standStartTimeRef.current) {
-      const standDuration = Date.now() - standStartTimeRef.current
-      if (standDuration >= STAND_TO_EASTER_EGG_DURATION) {
-        setAgentAnimation(agentId, "easter_egg")
-        standStartTimeRef.current = null
-      }
-    }
-
-    // Handle easter_egg to idle transition
-    if (state === "easter_egg" && easterEggStartTimeRef.current) {
-      const easterEggDuration = Date.now() - easterEggStartTimeRef.current
-      if (easterEggDuration >= EASTER_EGG_DURATION) {
-        setAgentAnimation(agentId, "idle")
-        easterEggStartTimeRef.current = null
-      }
-    }
-
-    // Handle sitting to working transition
-    if (state === "sitting" && sittingStartTimeRef.current && !reverseSittingStartTimeRef.current) {
-      const sittingDuration = Date.now() - sittingStartTimeRef.current
-      if (sittingDuration >= SITTING_TO_WORKING_DURATION) {
-        setAgentAnimation(agentId, "working")
-        sittingStartTimeRef.current = null
-      }
-    }
-
-    // Handle task completion detection while working
-    if (state === "working" && workingStartTimeRef.current && !taskCompletedRef.current) {
-      const workingDuration = Date.now() - workingStartTimeRef.current
-      // Simulate task completion after 10 seconds of working
-      if (workingDuration >= 10000) {
-        taskCompletedRef.current = true
-        setAgentAnimation(agentId, "sitting") // Start reverse sitting
-      }
-    }
-
-    // Handle reverse sitting to celebration transition
-    if (state === "sitting" && reverseSittingStartTimeRef.current) {
-      const reverseSittingDuration = Date.now() - reverseSittingStartTimeRef.current
-      if (reverseSittingDuration >= REVERSE_SITTING_DURATION) {
-        setAgentAnimation(agentId, "celebrate")
-        reverseSittingStartTimeRef.current = null
-      }
-    }
-
     if (!target) return
     const cur = groupRef.current.position
     const dx = target[0] - cur.x
     const dz = target[2] - cur.z
     const dist = Math.sqrt(dx * dx + dz * dz)
     if (dist < 0.05) {
-      cur.x = target[0]
-      cur.z = target[2]
-      setAgentAnimation(agentId, "sitting")
+      if (!arrivedRef.current) {
+        cur.x = target[0]
+        cur.z = target[2]
+        arrivedRef.current = true
+        setInstanceAnimation(instanceId, "sitting")
+      }
       return
     }
+    arrivedRef.current = false
     const step = Math.min(WALK_SPEED * delta, dist)
     cur.x += (dx / dist) * step
     cur.z += (dz / dist) * step
   })
 
-  //TODO: modify the states color
   const color = state === "celebrate" ? "#a6e3a1"
     : state === "error" ? "#f38ba8"
     : state === "walking" ? "#fab387"
@@ -220,16 +153,10 @@ function AgentCharacter({
     : state === "sitting" ? "#94e2d5"
     : state === "stand" ? "#b4befe"
     : state === "easter_egg" ? "#f5c2e7"
+    : state === "attention_start" || state === "attention_loop" ? "#b4befe"
     : meta?.color ?? "#89b4fa"
 
   const materialColors = meta?.colors ?? { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" }
-
-  const height = state === "celebrate" ? 0.8 : 0.6
-
-  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation()
-    selectAgent(instanceId)
-  }, [instanceId, selectAgent])
 
   return (
     <group ref={groupRef} position={[position[0], 0, position[2]]}>
@@ -241,8 +168,10 @@ function AgentCharacter({
         materialColors={materialColors}
         onClick={handleClick}
         animationMapping={ANIMATION_MAPPING}
-        holdLastFrame={state === "idle_long" || state === "sitting"}
-        playReverse={(wasIdleLongRef.current && state !== "idle_long") || (reverseSittingStartTimeRef.current !== null)}
+        loop={!isOneShot}
+        holdLastFrame={state === "idle_long"}
+        playReverse={playReverse}
+        onAnimationFinished={handleAnimationFinished}
       />
       {isSelected && (
         <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>

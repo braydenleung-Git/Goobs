@@ -26,7 +26,7 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { routeAgent, setAgentAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview } = useRuntimeState()
+  const { routeAgent, setAgentAnimation, setInstanceAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview, agents } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
   const [activeTab, setActiveTab] = useState<TabId>("workshop")
   const [showConfig, setShowConfig] = useState(false)
@@ -311,7 +311,7 @@ function ToolCallCard({ call }: { call: { name: string; arguments: string; outpu
 }
 
 function AgentChatPanel() {
-  const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation } = useRuntimeState()
+  const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation, routeAgent, setInstanceAnimation } = useRuntimeState()
 
   interface ToolCallEntry {
     name: string
@@ -383,6 +383,18 @@ function AgentChatPanel() {
     }))
     setSending(true)
     setAgentAnimation(selectedAgentId, "thinking")
+
+    // Classify message intent and route to workstation (non-blocking)
+    fetch("/api/chat/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: userMsg }),
+    })
+      .then((r) => r.json())
+      .then(({ workstationId }) => {
+        if (workstationId) routeAgent(selectedAgentId, workstationId)
+      })
+      .catch(() => {})
 
     try {
       const mappedMessages = currentLog.map((m) => ({
