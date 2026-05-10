@@ -35,6 +35,7 @@ const config: Config = {
         "xp-fill": "xpFill 0.6s ease-out forwards",
         "bounce-in": "bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
         "pulse-glow": "pulseGlow 2s ease-in-out infinite",
+        "panel-in": "panelIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
       },
       keyframes: {
         fadeIn: {
@@ -64,6 +65,10 @@ const config: Config = {
         pulseGlow: {
           "0%, 100%": { boxShadow: "0 0 8px rgba(137, 180, 250, 0.2)" },
           "50%": { boxShadow: "0 0 20px rgba(137, 180, 250, 0.4)" },
+        },
+        panelIn: {
+          "0%": { transform: "translateX(100%) scale(0.92)", opacity: "0" },
+          "100%": { transform: "translateX(0) scale(1)", opacity: "1" },
         },
       },
     },
