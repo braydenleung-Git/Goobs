@@ -61,34 +61,16 @@ export function FBXModelLoader({
         })
       }
 
-      // Remove duplicate meshes: keep only "Cube" (child of Armature) if it exists
-      const meshes: THREE.Mesh[] = []
-      fbx.traverse((child) => {
-        if (child instanceof THREE.Mesh) meshes.push(child)
-      })
-      const cubeMesh = meshes.find((m) => m.name === "Cube")
-      if (cubeMesh) {
-        for (const m of meshes) {
-          m.visible = m === cubeMesh
-        }
-      }
-
-      // Store the model
-      modelRef.current = fbx
-
       // Extract animations from NLA strips
       if (fbx.animations && fbx.animations.length > 0) {
         animationsRef.current = fbx.animations
-        
-        // Create animation mixer
+
         const animMixer = new THREE.AnimationMixer(fbx)
         mixerRef.current = animMixer
 
-        // Get the target animation name from mapping or use the state directly
         const targetAnimationName = animationMapping?.[animationState] || animationState
-        
-        // Play initial animation
-        const initialClip = animationsRef.current.find((clip: THREE.AnimationClip) => 
+
+        const initialClip = animationsRef.current.find((clip: THREE.AnimationClip) =>
           clip.name.toLowerCase().includes(targetAnimationName.toLowerCase())
         ) || animationsRef.current[0]
 
@@ -110,8 +92,15 @@ export function FBXModelLoader({
         mixerRef.current.stopAllAction()
         mixerRef.current.uncacheRoot(mixerRef.current.getRoot())
       }
+      if (groupRef.current && modelRef.current) {
+        groupRef.current.remove(modelRef.current)
+      }
+      modelRef.current = null
+      animationsRef.current = []
+      mixerRef.current = null
+      activeActionRef.current = null
     }
-  }, [url, position, scale, rotation]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [url])
 
   // Handle animation state changes
   useEffect(() => {
