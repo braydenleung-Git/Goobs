@@ -57,7 +57,7 @@ export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
 
           <div className="flex-1 flex justify-center">
             <span
-              className="font-display text-xl font-bold tracking-wide"
+              className="font-display text-2xl font-bold tracking-wide"
               style={{
                 background: "linear-gradient(135deg, #89b4fa, #cba6f7, #f5c2e7, #a6e3a1, #fab387, #94e2d5, #89b4fa)",
                 backgroundSize: "400% 400%",

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef } from "react"
 import * as THREE from "three"
 
 const WALK_SPEED = 3
+const SPAWN_DURATION = 400
 
 function AgentCharacter({
   agentId,
@@ -22,9 +23,23 @@ function AgentCharacter({
   const state = agent?.animationState ?? "idle"
   const isSelected = selectedAgentId === agentId
   const target = agent?.targetPosition
+  const entryRef = useRef<number | null>(null)
+
+  if (entryRef.current === null) entryRef.current = Date.now()
 
   useFrame((_, delta) => {
-    if (!groupRef.current || !target) return
+    if (!groupRef.current) return
+
+    const elapsed = Date.now() - entryRef.current
+    if (elapsed < SPAWN_DURATION) {
+      const t = Math.min(elapsed / SPAWN_DURATION, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      groupRef.current.scale.setScalar(eased)
+    } else if (groupRef.current.scale.x < 1) {
+      groupRef.current.scale.setScalar(1)
+    }
+
+    if (!target) return
     const cur = groupRef.current.position
     const dx = target[0] - cur.x
     const dz = target[2] - cur.z
@@ -206,6 +221,59 @@ function DropCatcher() {
   return null
 }
 
+function DropPreview() {
+  const { dropPreview, clearDropPreview } = useRuntimeState()
+  const { camera, gl } = useThree()
+  const groupRef = useRef<THREE.Group>(null)
+  const pulseRef = useRef(0)
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return
+    pulseRef.current += delta * 3
+    const scale = 1 + Math.sin(pulseRef.current) * 0.08
+    groupRef.current.scale.setScalar(scale)
+  })
+
+  if (!dropPreview) return null
+
+  const rect = gl.domElement.getBoundingClientRect()
+  const ndcX = ((dropPreview.screenX - rect.left) / rect.width) * 2 - 1
+  const ndcY = -((dropPreview.screenY - rect.top) / rect.height) * 2 + 1
+
+  const raycaster = new THREE.Raycaster()
+  raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera)
+
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+  const point = new THREE.Vector3()
+  const hit = raycaster.ray.intersectPlane(plane, point)
+
+  if (!hit) return null
+
+  return (
+    <group ref={groupRef} position={[point.x, 0, point.z]}>
+      <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.25, 0.5, 32]} />
+        <meshStandardMaterial
+          color="#89b4fa"
+          transparent
+          opacity={0.35}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <coneGeometry args={[0.15, 0.5, 8]} />
+        <meshStandardMaterial
+          color="#89b4fa"
+          transparent
+          opacity={0.25}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 export function WorkshopScene() {
   const { agents, agentMeta } = useRuntimeState()
 
@@ -226,6 +294,7 @@ export function WorkshopScene() {
     >
       <SceneClickCatcher />
       <DropCatcher />
+      <DropPreview />
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 10, 5]} intensity={0.7} />
       <directionalLight position={[-5, 5, -5]} intensity={0.2} />
