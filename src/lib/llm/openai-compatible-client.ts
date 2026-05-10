@@ -27,15 +27,6 @@ export interface ChatRunOutput {
   toolCalls?: ToolCall[]
 }
 
-const FALLBACK_MODELS: ModelInfo[] = [
-  { id: "OpenCode/deepseek-v4-flash", name: "DeepSeek V4 Flash (via bifrost)", capabilities: ["text"] },
-  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", capabilities: ["text"] },
-  { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", capabilities: ["text"] },
-  { id: "gpt-4o", name: "GPT-4o", capabilities: ["text"] },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini", capabilities: ["text"] },
-  { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", capabilities: ["text"] },
-]
-
 async function fetchWithBase(path: string, init?: RequestInit): Promise<Response> {
   const { baseUrl, apiKey } = await getProviderRuntimeConfig()
   const url = `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`
@@ -45,24 +36,16 @@ async function fetchWithBase(path: string, init?: RequestInit): Promise<Response
 }
 
 export async function listModels(): Promise<ModelInfo[]> {
-  try {
-    const res = await fetchWithBase("models", { cache: "no-store" })
-    if (!res.ok) throw new Error(`Model fetch returned ${res.status}`)
-    const body = await res.json()
-    const models: ModelInfo[] = (body.data || body || []).map((m: any) => ({
-      id: m.id || m.name || "unknown",
-      name: m.name || m.id || "unknown",
-      capabilities: [],
-    }))
-    if (models.length === 0) throw new Error("Empty model list")
-    const ids = new Set(models.map((m) => m.id))
-    for (const fb of FALLBACK_MODELS) {
-      if (!ids.has(fb.id)) models.push(fb)
-    }
-    return models
-  } catch {
-    return FALLBACK_MODELS
-  }
+  const res = await fetchWithBase("models", { cache: "no-store" })
+  if (!res.ok) throw new Error(`Model fetch returned ${res.status}: ${await res.text()}`)
+  const body = await res.json()
+  const models: ModelInfo[] = (body.data || body || []).map((m: any) => ({
+    id: m.id || m.name || "unknown",
+    name: m.name || m.id || "unknown",
+    capabilities: [],
+  }))
+  if (models.length === 0) throw new Error("Empty model list")
+  return models
 }
 
 export async function runChatCompletion(input: ChatRunInput): Promise<ChatRunOutput> {
