@@ -14,7 +14,11 @@ interface ModelOption {
   capabilities: string[]
 }
 
-export function ConfigPanels() {
+interface Props {
+  onAgentCreated?: (agentId: string) => void
+}
+
+export function ConfigPanels({ onAgentCreated }: Props) {
   const [config, setConfig] = useState<ProviderConfig | null>(null)
   const [models, setModels] = useState<ModelOption[]>([])
   const [baseUrl, setBaseUrl] = useState("")
@@ -88,7 +92,9 @@ export function ConfigPanels() {
       }),
     })
     if (res.ok) {
+      const agent = await res.json()
       setMessage(`Agent "${agentName}" created`)
+      onAgentCreated?.(agent.id)
       setAgentName("")
       setSystemPrompt("")
       setSkills("")

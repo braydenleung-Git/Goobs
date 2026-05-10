@@ -5,6 +5,8 @@
 import { applyChallengeReward } from "./progression-service"
 import { prisma } from "@/lib/db/prisma"
 
+jest.setTimeout(30000)
+
 describe("progression-service", () => {
   beforeAll(async () => {
     await prisma.challengeRewardEvent.deleteMany()

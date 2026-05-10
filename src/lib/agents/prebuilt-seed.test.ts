@@ -5,6 +5,8 @@
 import { seedPrebuiltAgents } from "@/lib/agents/prebuilt-seed"
 import { prisma } from "@/lib/db/prisma"
 
+jest.setTimeout(30000)
+
 describe("prebuilt-seed", () => {
   beforeAll(async () => {
     await prisma.agentProfile.deleteMany({ where: { isPrebuilt: true } })

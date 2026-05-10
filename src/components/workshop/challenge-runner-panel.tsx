@@ -10,7 +10,7 @@ interface Challenge {
   workstationTarget: string
 }
 
-interface RunResult {
+export interface RunResult {
   runId: string
   challengeSlug: string
   output: string
@@ -23,8 +23,8 @@ interface RunResult {
 }
 
 interface Props {
-  onRunStart?: () => void
-  onRunComplete?: (result: RunResult) => void
+  onRunStart?: (agentId: string, workstationTarget: string) => void
+  onRunComplete?: (result: RunResult, agentId: string) => void
 }
 
 export function ChallengeRunnerPanel({ onRunStart, onRunComplete }: Props) {
@@ -49,7 +49,7 @@ export function ChallengeRunnerPanel({ onRunStart, onRunComplete }: Props) {
     if (!selected || !agentId) return
     setRunning(true)
     setResult(null)
-    onRunStart?.()
+    onRunStart?.(agentId, selectedChallenge?.workstationTarget ?? "computer")
     try {
       const res = await fetch("/api/challenges/run", {
         method: "POST",
@@ -58,7 +58,7 @@ export function ChallengeRunnerPanel({ onRunStart, onRunComplete }: Props) {
       })
       const data = await res.json()
       setResult(data)
-      onRunComplete?.(data)
+      onRunComplete?.(data, agentId)
     } catch {
       setResult({
         runId: "",

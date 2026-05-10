@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react"
 
 interface RunRecord {
   id: string
@@ -10,13 +10,17 @@ interface RunRecord {
   createdAt: string
 }
 
-export function ProgressAndHistory() {
+export interface ProgressHandle {
+  refresh: () => void
+}
+
+export const ProgressAndHistory = forwardRef<ProgressHandle>(function ProgressAndHistory(_props, ref) {
   const [xp, setXp] = useState(0)
   const [level, setLevel] = useState(1)
   const [unlockedWorkstations, setUnlockedWorkstations] = useState<string[]>([])
   const [runs, setRuns] = useState<RunRecord[]>([])
 
-  useEffect(() => {
+  const load = () => {
     const stored = localStorage.getItem("goobs-progress")
     if (stored) {
       try {
@@ -32,13 +36,14 @@ export function ProgressAndHistory() {
         setRuns(JSON.parse(storedRuns))
       } catch {}
     }
-  }, [])
+  }
+
+  useEffect(load, [])
+
+  useImperativeHandle(ref, () => ({ refresh: load }), [])
 
   useEffect(() => {
-    localStorage.setItem(
-      "goobs-progress",
-      JSON.stringify({ xp, level, unlockedWorkstations }),
-    )
+    localStorage.setItem("goobs-progress", JSON.stringify({ xp, level, unlockedWorkstations }))
   }, [xp, level, unlockedWorkstations])
 
   const maxXpForLevel = level * 500 + 200
@@ -65,10 +70,7 @@ export function ProgressAndHistory() {
           <div className="mb-1 text-xs text-gray-400">Unlocked Workstations:</div>
           <div className="flex flex-wrap gap-1">
             {unlockedWorkstations.map((w) => (
-              <span
-                key={w}
-                className="rounded bg-green-900/50 px-2 py-0.5 text-xs text-green-300"
-              >
+              <span key={w} className="rounded bg-green-900/50 px-2 py-0.5 text-xs text-green-300">
                 {w}
               </span>
             ))}
@@ -96,4 +98,4 @@ export function ProgressAndHistory() {
       )}
     </div>
   )
-}
+})
