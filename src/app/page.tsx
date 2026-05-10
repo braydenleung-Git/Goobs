@@ -239,13 +239,13 @@ function AgentChatPanel() {
 
   const agent = agents.find((a) => a.agentId === selectedAgentId)
   const meta = agentMeta[selectedAgentId]
-  if (!agent || !meta) return null
+  if (!agent) return null
 
   const stateColor = agent.animationState === "celebrate" ? "#a6e3a1"
     : agent.animationState === "error" ? "#f38ba8"
     : agent.animationState === "walking" ? "#fab387"
     : agent.animationState === "thinking" ? "#cba6f7"
-    : meta.color
+    : meta?.color ?? "#89b4fa"
 
   let skills: string[] = []
   if (profile) {
@@ -353,7 +353,7 @@ function AgentChatPanel() {
           <div className="flex items-center gap-3 border-b border-white/5 px-5 py-4">
             <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: stateColor, boxShadow: `0 0 8px ${stateColor}40` }} />
             <div className="flex-1 min-w-0">
-              <h3 className="font-display text-base font-bold text-text truncate">{meta.name}</h3>
+              <h3 className="font-display text-base font-bold text-text truncate">{meta?.name || selectedAgentId}</h3>
               <span className="font-body text-xs text-subtext capitalize">{sending ? "thinking..." : agent.animationState}</span>
             </div>
             <button onClick={() => selectAgent(null)} className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs shrink-0">✕</button>
