@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { AgentAvatar } from "@/components/ui/agent-avatar"
 import { skillName } from "@/lib/skills/skill-name"
 
 interface AgentSummary {
   id: string
   name: string
   modelColorHex: string
+  modelColorsJson?: string
   defaultModel: string
   skillsJson: string
   systemPrompt: string
@@ -96,15 +98,16 @@ export function AgentSidebar({ onSidebarChange }: Props) {
                   draggable
                   onDragStart={(e) => handleDragStart(e, agent.id)}
                   onClick={() => setSelectedInfo(selectedInfo === agent.id ? null : agent.id)}
-                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer transition-all ${
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all ${
                     selectedInfo === agent.id
                       ? "bg-white/10"
                       : "hover:bg-white/5"
                   }`}
                 >
-                  <div
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: agent.modelColorHex || "#89b4fa" }}
+                  <AgentAvatar
+                    color={agent.modelColorHex || "#89b4fa"}
+                    colors={(function() { try { return JSON.parse(agent.modelColorsJson || "{}") } catch { return undefined } })()}
+                    size={32}
                   />
 
                   <div className="flex-1 min-w-0">
