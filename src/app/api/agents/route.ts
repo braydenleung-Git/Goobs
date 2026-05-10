@@ -14,7 +14,14 @@ const AgentInputSchema = z.object({
 
 const AgentUpdateSchema = AgentInputSchema.partial()
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const id = url.searchParams.get("id")
+  if (id) {
+    const agent = await prisma.agentProfile.findUnique({ where: { id } })
+    if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 })
+    return NextResponse.json(agent)
+  }
   const agents = await prisma.agentProfile.findMany({ orderBy: { createdAt: "desc" } })
   return NextResponse.json(agents)
 }
