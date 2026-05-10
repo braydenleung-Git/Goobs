@@ -1,6 +1,6 @@
 "use client"
 
-import { useFrame } from "@react-three/fiber"
+import { useFrame, type ThreeEvent } from "@react-three/fiber"
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 import { FBXLoader } from "three-stdlib"
@@ -16,7 +16,7 @@ interface FBXModelLoaderProps {
   rotation?: [number, number, number]
   animationState?: string
   color?: string
-  onClick?: () => void
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
   animationMapping?: AnimationMapping
   holdLastFrame?: boolean
   playReverse?: boolean
@@ -99,7 +99,7 @@ export function FBXModelLoader({
         mixerRef.current.uncacheRoot(mixerRef.current.getRoot())
       }
     }
-  }, [url, position, scale, rotation, color])
+  }, [url, position, scale, rotation]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle animation state changes
   useEffect(() => {
