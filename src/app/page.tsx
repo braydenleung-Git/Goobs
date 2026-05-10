@@ -33,7 +33,7 @@ function WorkshopContent() {
   const [showChallenge, setShowChallenge] = useState(false)
   const [previewColor, setPreviewColor] = useState("#89b4fa")
   const [showLaunch, setShowLaunch] = useState(true)
-  const [showIntro, setShowIntro] = useState(() => typeof window !== "undefined" && !localStorage.getItem("goobs-intro-done"))
+  const [showIntro, setShowIntro] = useState(true)
   const [showToolIntro, setShowToolIntro] = useState(false)
   const [toasts, setToasts] = useState<Array<{ id: string; title: string; subtitle: string }>>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -132,7 +132,7 @@ function WorkshopContent() {
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
       {showLaunch && <LaunchScreen onStart={() => setShowLaunch(false)} />}
-      {showIntro && !showLaunch && <IntroCards onDone={() => { localStorage.setItem("goobs-intro-done", "true"); setShowIntro(false) }} />}
+      {showIntro && !showLaunch && <IntroCards onDone={() => setShowIntro(false)} />}
       {showToolIntro && <ToolIntroModal onDone={() => setShowToolIntro(false)} />}
       <TopNav activeTab={activeTab} onTabChange={setActiveTab} onOpenConfig={() => setShowConfig(true)} />
 

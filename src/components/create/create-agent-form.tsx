@@ -54,9 +54,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editContent, setEditContent] = useState("")
-  const [showSkillHint, setShowSkillHint] = useState(
-    typeof window !== "undefined" && !localStorage.getItem("goobs-skills-hint-shown")
-  )
+  const [showSkillHint, setShowSkillHint] = useState(true)
 
   useEffect(() => {
     fetch("/api/models")
@@ -441,7 +439,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
 
       {showSkillHint && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => { localStorage.setItem("goobs-skills-hint-shown", "true"); setShowSkillHint(false) }} />
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowSkillHint(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="glass-strong glass-border-accent w-full max-w-sm animate-scale-in rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start gap-3 mb-3">
@@ -459,7 +457,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
               </div>
               <button
                 type="button"
-                onClick={() => { localStorage.setItem("goobs-skills-hint-shown", "true"); setShowSkillHint(false) }}
+                onClick={() => setShowSkillHint(false)}
                 className="btn-primary rounded-full px-6 py-2 font-display text-sm font-bold w-full"
               >
                 Got it!
