@@ -354,16 +354,17 @@ function CameraController({ controlsRef }: { controlsRef: React.MutableRefObject
     const ctrl = controlsRef.current
     if (!ctrl?.target) return
     const agent = selectedInstanceId ? agents.find((a) => a.instanceId === selectedInstanceId) : undefined
-    let tx = 0, tz = 0
+
     if (agent) {
-      tx = agent.position[0]
-      tz = agent.position[2]
+      ctrl.autoRotate = false
+      const tx = agent.position[0]
+      const tz = agent.position[2]
+      ctrl.target.lerp(new THREE.Vector3(tx, 0.4, tz), 0.06)
+      camera.position.lerp(new THREE.Vector3(tx + 3, 3.5, tz + 3), 0.06)
+    } else {
+      ctrl.autoRotate = true
+      ctrl.target.lerp(new THREE.Vector3(0, 0.4, 0), 0.02)
     }
-    ctrl.target.lerp(new THREE.Vector3(tx, 0.4, tz), 0.06)
-    camera.position.lerp(
-      agent ? new THREE.Vector3(tx + 3, 3.5, tz + 3) : new THREE.Vector3(8, 8, 8),
-      0.06,
-    )
     ctrl.update()
   })
 
@@ -533,6 +534,10 @@ export function WorkshopScene() {
       <OrbitControls
         ref={controlsRef}
         enablePan={false}
+        enableDamping
+        dampingFactor={0.05}
+        autoRotate
+        autoRotateSpeed={0.5}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 2.2}
         minDistance={5}
