@@ -21,14 +21,21 @@ interface Props {
     toolsJson: string
     defaultModel: string
     modelColorHex: string
+    modelColorsJson?: string
   } | null
   onUpdated?: () => void
 }
 
-const PRESET_COLORS = [
-  "#89b4fa", "#cba6f7", "#f5c2e7", "#a6e3a1",
-  "#fab387", "#f38ba8", "#94e2d5", "#f9e2af",
-]
+const PASTEL_SKIN = ["#f5c2e7", "#fab387", "#f9e2af", "#cdd6f4"]
+const PASTEL_SHIRT = ["#89b4fa", "#a6e3a1", "#cba6f7", "#94e2d5", "#f9e2af", "#f38ba8"]
+const PASTEL_PANTS = ["#6c7086", "#585b70", "#89b4fa", "#a6e3a1", "#45475a"]
+
+function parseColors(agentColorsJson?: string): { skin: string; shirt: string; pants: string } {
+  if (agentColorsJson) {
+    try { return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086", ...JSON.parse(agentColorsJson) } } catch {}
+  }
+  return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" }
+}
 
 export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Props) {
   const [name, setName] = useState(editingAgent?.name ?? "")
@@ -39,7 +46,11 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   })
   const [model, setModel] = useState(editingAgent?.defaultModel ?? "OpenCode/deepseek-v4-flash")
   const [models, setModels] = useState<ModelOption[]>([])
-  const [color, setColor] = useState(editingAgent?.modelColorHex ?? PRESET_COLORS[0])
+  const initColors = parseColors(editingAgent?.modelColorsJson)
+  const [skinColor, setSkinColor] = useState(initColors.skin)
+  const [shirtColor, setShirtColor] = useState(initColors.shirt)
+  const [pantsColor, setPantsColor] = useState(initColors.pants)
+  const [color, setColor] = useState(editingAgent?.modelColorHex ?? shirtColor)
   const [prefersImage, setPrefersImage] = useState(false)
   const [toolProfile, setToolProfile] = useState(() => {
     if (editingAgent) {
@@ -122,6 +133,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
         toolsJson: JSON.stringify({ profile: toolProfile, selectedTools: profileToTools[toolProfile] || [] }),
         defaultModel: model,
         modelColorHex: color,
+        modelColorsJson: JSON.stringify({ skin: skinColor, shirt: shirtColor, pants: pantsColor }),
         prefersImageTasks: prefersImage,
       }
 
@@ -151,7 +163,10 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           setName("")
           setSystemPrompt("")
           setSkills([])
-          setColor(PRESET_COLORS[0])
+          setColor(PASTEL_SHIRT[0])
+          setSkinColor(PASTEL_SKIN[0])
+          setShirtColor(PASTEL_SHIRT[0])
+          setPantsColor(PASTEL_PANTS[0])
           setPrefersImage(false)
         } else {
           setMessage("Failed to create agent")
@@ -301,24 +316,36 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           </div>
         </div>
 
-        <div className="animate-fade-in stagger-3">
-          <label className="mb-2 block font-display text-sm font-bold text-text">
-            Color
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {PRESET_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                className="h-8 w-8 rounded-full transition-all duration-150"
-                style={{
-                  backgroundColor: c,
-                  boxShadow: color === c ? `0 0 0 2px ${c}, 0 0 12px ${c}60` : "none",
-                  transform: color === c ? "scale(1.15)" : "scale(1)",
-                }}
-              />
-            ))}
+        <div className="animate-fade-in stagger-3 space-y-3">
+          <div>
+            <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Skin</label>
+            <div className="flex flex-wrap gap-2">
+              {PASTEL_SKIN.map((c) => (
+                <button key={c} type="button" onClick={() => setSkinColor(c)}
+                  className="h-7 w-7 rounded-full transition-all duration-150"
+                  style={{ backgroundColor: c, boxShadow: skinColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: skinColor === c ? "scale(1.15)" : "scale(1)" }} />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Shirt</label>
+            <div className="flex flex-wrap gap-2">
+              {PASTEL_SHIRT.map((c) => (
+                <button key={c} type="button" onClick={() => { setShirtColor(c); setColor(c) }}
+                  className="h-7 w-7 rounded-full transition-all duration-150"
+                  style={{ backgroundColor: c, boxShadow: shirtColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: shirtColor === c ? "scale(1.15)" : "scale(1)" }} />
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-2 block font-display text-xs font-bold text-text/70 uppercase tracking-wider">Pants</label>
+            <div className="flex flex-wrap gap-2">
+              {PASTEL_PANTS.map((c) => (
+                <button key={c} type="button" onClick={() => setPantsColor(c)}
+                  className="h-7 w-7 rounded-full transition-all duration-150"
+                  style={{ backgroundColor: c, boxShadow: pantsColor === c ? `0 0 0 2px ${c}, 0 0 10px ${c}60` : "none", transform: pantsColor === c ? "scale(1.15)" : "scale(1)" }} />
+              ))}
+            </div>
           </div>
         </div>
 

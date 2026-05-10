@@ -3,21 +3,25 @@
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Grid } from "@react-three/drei"
 
-function PlaceholderAgent({ color }: { color: string }) {
+function PlaceholderAgent({ skinColor, shirtColor, pantsColor }: { skinColor: string; shirtColor: string; pantsColor: string }) {
   return (
     <group position={[0, 0.3, 0]}>
+      {/* Body — shirt */}
       <mesh>
         <capsuleGeometry args={[0.4, 0.8, 8, 16]} />
-        <meshStandardMaterial color={color} roughness={0.3} metalness={0.1} />
+        <meshStandardMaterial color={shirtColor} roughness={0.3} metalness={0.1} />
       </mesh>
+      {/* Head — skin */}
       <mesh position={[0, 0.9, 0]}>
         <sphereGeometry args={[0.28, 16, 16]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
+        <meshStandardMaterial color={skinColor} roughness={0.4} />
       </mesh>
+      {/* Nose — skin */}
       <mesh position={[0, 0.9, 0.22]}>
         <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color={skinColor} />
       </mesh>
+      {/* Eyes */}
       <group position={[0, -0.1, 0]}>
         <mesh position={[-0.15, 0, 0]} rotation={[0, 0, 0.2]}>
           <sphereGeometry args={[0.06, 8, 8]} />
@@ -28,40 +32,56 @@ function PlaceholderAgent({ color }: { color: string }) {
           <meshStandardMaterial color="#ffffff" />
         </mesh>
       </group>
+      {/* Arms — shirt color */}
       <group position={[0, 0.5, -0.35]}>
         <mesh position={[-0.18, 0, 0]} rotation={[0.3, 0, 0]}>
           <boxGeometry args={[0.05, 0.3, 0.05]} />
-          <meshStandardMaterial color={color} />
+          <meshStandardMaterial color={shirtColor} />
         </mesh>
         <mesh position={[0.18, 0, 0]} rotation={[-0.3, 0, 0]}>
           <boxGeometry args={[0.05, 0.3, 0.05]} />
-          <meshStandardMaterial color={color} />
+          <meshStandardMaterial color={shirtColor} />
+        </mesh>
+      </group>
+      {/* Legs — pants color */}
+      <group position={[-0.12, -0.4, 0]}>
+        <mesh>
+          <boxGeometry args={[0.1, 0.2, 0.1]} />
+          <meshStandardMaterial color={pantsColor} />
+        </mesh>
+      </group>
+      <group position={[0.12, -0.4, 0]}>
+        <mesh>
+          <boxGeometry args={[0.1, 0.2, 0.1]} />
+          <meshStandardMaterial color={pantsColor} />
         </mesh>
       </group>
     </group>
   )
 }
 
-function FloatingHat({ color }: { color: string }) {
+function FloatingHat({ shirtColor }: { shirtColor: string }) {
   return (
     <group position={[0, 1.2, 0]}>
       <mesh position={[0, 0.08, 0]}>
         <boxGeometry args={[0.35, 0.04, 0.35]} />
-        <meshStandardMaterial color={color} opacity={0.6} transparent />
+        <meshStandardMaterial color={shirtColor} opacity={0.6} transparent />
       </mesh>
       <mesh position={[0, 0.2, -0.05]}>
         <boxGeometry args={[0.05, 0.2, 0.2]} />
-        <meshStandardMaterial color={color} opacity={0.4} transparent />
+        <meshStandardMaterial color={shirtColor} opacity={0.4} transparent />
       </mesh>
     </group>
   )
 }
 
 interface Props {
-  color: string
+  skinColor: string
+  shirtColor: string
+  pantsColor: string
 }
 
-export function AgentPreviewScene({ color }: Props) {
+export function AgentPreviewScene({ skinColor, shirtColor, pantsColor }: Props) {
   return (
     <div className="h-full w-full overflow-hidden rounded-2xl">
       <Canvas
@@ -89,8 +109,8 @@ export function AgentPreviewScene({ color }: Props) {
           position={[0, -0.01, 0]}
         />
 
-        <PlaceholderAgent color={color} />
-        <FloatingHat color={color} />
+        <PlaceholderAgent skinColor={skinColor} shirtColor={shirtColor} pantsColor={pantsColor} />
+        <FloatingHat shirtColor={shirtColor} />
 
         <OrbitControls
           enableZoom={false}

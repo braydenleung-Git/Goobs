@@ -14,6 +14,7 @@ interface AgentSummary {
   id: string
   name: string
   modelColorHex: string
+  modelColorsJson?: string
   defaultModel: string
   skillsJson: string
   toolsJson: string
@@ -45,6 +46,7 @@ export function AgentsGrid({ onAgentCreated }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [editColor, setEditColor] = useState("#89b4fa")
+  const [editColors, setEditColors] = useState({ skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" })
 
   const load = useCallback(() => {
     fetch("/api/agents")
@@ -74,11 +76,15 @@ export function AgentsGrid({ onAgentCreated }: Props) {
 
   const openEdit = (agent: AgentSummary) => {
     setEditColor(agent.modelColorHex)
+    setEditColors(() => {
+      try { return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086", ...JSON.parse(agent.modelColorsJson || "{}") } } catch { return { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" } }
+    })
     setEditing(agent.id)
   }
 
   const openCreate = () => {
     setEditColor("#89b4fa")
+    setEditColors({ skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" })
     setCreating(true)
   }
 
@@ -91,7 +97,7 @@ export function AgentsGrid({ onAgentCreated }: Props) {
         <div className="flex flex-1 animate-scale-in">
           <div className="hidden w-1/2 min-w-0 lg:block">
             <div className="h-full p-4">
-              <AgentPreviewScene color={editColor} />
+              <AgentPreviewScene skinColor={editColors.skin} shirtColor={editColors.shirt} pantsColor={editColors.pants} />
             </div>
           </div>
           <div className="flex w-full lg:w-1/2 flex-col overflow-y-auto p-4 animate-slide-in-right">

@@ -24,7 +24,8 @@ model AgentProfile {
   skillsJson       String   @default("[]")
   toolsJson        String   @default("[]")
   defaultModel     String
-  modelColorHex    String   @default("#4f46e5")
+  modelColorHex    String   @default("#89b4fa")
+  modelColorsJson  String   @default("{}")
   prefersImageTasks Boolean @default(false)
   isPrebuilt       Boolean  @default(false)
   createdAt        DateTime @default(now())

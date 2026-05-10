@@ -15,7 +15,7 @@ interface FBXModelLoaderProps {
   scale?: [number, number, number]
   rotation?: [number, number, number]
   animationState?: string
-  color?: string
+  materialColors?: Record<string, string>
   onClick?: (e: ThreeEvent<MouseEvent>) => void
   animationMapping?: AnimationMapping
   holdLastFrame?: boolean
@@ -28,7 +28,7 @@ export function FBXModelLoader({
   scale = [1, 1, 1], 
   rotation = [0, 0, 0],
   animationState = "idle",
-  color,
+  materialColors,
   onClick,
   animationMapping,
   holdLastFrame = false,
@@ -48,14 +48,21 @@ export function FBXModelLoader({
       fbx.position.set(...position)
       fbx.rotation.set(...rotation)
 
-      // Apply color tint if provided
-      if (color) {
+      // Apply colors by material name
+      if (materialColors) {
         fbx.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            const material = child.material as THREE.MeshStandardMaterial
-            if (material) {
-              material.color = new THREE.Color(color)
-              material.needsUpdate = true
+            const mat = child.material
+            if (mat) {
+              const matName = (mat as any).name?.toLowerCase() || ""
+              let match: string | undefined
+              if (matName.includes("skin") || matName.includes("body") || matName.includes("head")) match = materialColors.skin
+              else if (matName.includes("shirt") || matName.includes("top") || matName.includes("jacket")) match = materialColors.shirt
+              else if (matName.includes("pants") || matName.includes("bottom") || matName.includes("leg")) match = materialColors.pants
+              if (match) {
+                ;(mat as THREE.MeshStandardMaterial).color = new THREE.Color(match)
+                mat.needsUpdate = true
+              }
             }
           }
         })
