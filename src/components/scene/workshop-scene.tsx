@@ -50,6 +50,7 @@ function AgentCharacter({
   stateRef.current = state
 
   const pendingStateRef = useRef<string | null>(null)
+  const taskResultRef = useRef<string | null>(null)
   const idleLongInterruptedRef = useRef(false)
   const prevSelectedRef = useRef(isSelected)
   const arrivedRef = useRef(false)
@@ -58,7 +59,7 @@ function AgentCharacter({
 
   if (entryRef.current === null) entryRef.current = Date.now()
 
-  const isOneShot = !["idle", "walking", "working", "attention_loop", "thinking", "stand", "typing"].includes(state)
+  const isOneShot = !["idle", "walking", "attention_loop", "thinking", "stand", "typing"].includes(state)
   const playReverse = pendingStateRef.current !== null && state === "idle_long"
 
   // Click handler
@@ -97,8 +98,14 @@ function AgentCharacter({
     }
   }, [state, instanceId, setInstanceAnimation])
 
+  // Watch for external taskResult
+  useEffect(() => {
+    if (agent?.taskResult) {
+      taskResultRef.current = agent?.taskResult ?? null
+    }
+  }, [agent?.taskResult])
+
   // Animation chaining via onAnimationFinished
-  // Sitting → working is NOT auto-chained — working is set externally by challenges/tools
   const handleAnimationFinished = useCallback((finishedState: string) => {
     if (pendingStateRef.current) {
       const next = pendingStateRef.current
@@ -109,6 +116,16 @@ function AgentCharacter({
     }
     if (finishedState === "attention_start") {
       setInstanceAnimation(instanceId, "attention_loop")
+    } else if (finishedState === "sitting") {
+      setInstanceAnimation(instanceId, "working")
+    } else if (finishedState === "working") {
+      const result = taskResultRef.current
+      taskResultRef.current = null
+      if (result) {
+        setInstanceAnimation(instanceId, result as any)
+      } else {
+        setInstanceAnimation(instanceId, "idle")
+      }
     } else if (finishedState === "celebrate" || finishedState === "error") {
       setTargetPosition(instanceId, originalPositionRef.current)
       returningHomeRef.current = true

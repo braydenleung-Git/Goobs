@@ -26,7 +26,7 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { routeAgent, setAgentAnimation, setInstanceAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview, agents } = useRuntimeState()
+  const { routeAgent, setAgentAnimation, setInstanceAnimation, setTaskResult, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview, agents } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
   const [activeTab, setActiveTab] = useState<TabId>("workshop")
   const [showConfig, setShowConfig] = useState(false)
@@ -72,13 +72,14 @@ function WorkshopContent() {
     routeAgent(agentId, workstationTarget)
   }, [routeAgent])
 
+  const agentsRef = useRef(agents)
+  agentsRef.current = agents
+
   const handleRunComplete = useCallback((result: RunResult, agentId: string) => {
-    if (result.finalPass) {
-      setTimeout(() => setAgentAnimation(agentId, "celebrate"), 300)
-    } else {
-      setAgentAnimation(agentId, "error")
+    const instance = agentsRef.current.find((a) => a.agentId === agentId)
+    if (instance) {
+      setTaskResult(instance.instanceId, result.finalPass ? "celebrate" : "error")
     }
-    setTimeout(() => setAgentAnimation(agentId, "idle"), 4000)
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("goobs-runs")
       const runs = stored ? JSON.parse(stored) : []
@@ -110,7 +111,7 @@ function WorkshopContent() {
       ;(window as any).__goobsProgressionEvent?.("tool_build_script")
     }
     progressRef.current?.refresh()
-  }, [setAgentAnimation])
+  }, [setTaskResult])
 
   const handleProgressionEvent = useCallback((type: ProgressionEventType, data?: string) => {
     const delta = dispatchProgressionEvent({ type, agentId: data })
@@ -311,7 +312,7 @@ function ToolCallCard({ call }: { call: { name: string; arguments: string; outpu
 }
 
 function AgentChatPanel() {
-  const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation, routeAgent, setInstanceAnimation } = useRuntimeState()
+  const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation, setInstanceAnimation, setTaskResult, routeAgent } = useRuntimeState()
 
   interface ToolCallEntry {
     name: string
@@ -535,7 +536,8 @@ function AgentChatPanel() {
       const buildPairs = Math.min(writeCount, bashCount)
       for (let i = 0; i < buildPairs; i++) (window as any).__goobsProgressionEvent?.("tool_build_script")
 
-      setAgentAnimation(selectedAgentId, "celebrate")
+      const chatInstance = agents.find((a) => a.agentId === selectedAgentId)
+      if (chatInstance) setTaskResult(chatInstance.instanceId, "celebrate")
     } catch {
       setChatLogs((prev) => ({
         ...prev,

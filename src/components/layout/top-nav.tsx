@@ -37,8 +37,8 @@ export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
   return (
     <nav className="relative z-50 mx-4 mt-2">
       <div className="glass rounded-2xl px-4 py-2">
-        <div className="flex items-center">
-          <div className="flex items-center gap-1 w-[200px]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -50,7 +50,7 @@ export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
             ))}
           </div>
 
-          <div className="flex-1 flex justify-center">
+          <div className="absolute left-1/2 -translate-x-1/2">
             <span
               className="font-display text-2xl font-bold tracking-wide"
               style={{
@@ -66,7 +66,7 @@ export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
             </span>
           </div>
 
-          <div className="flex items-center justify-end gap-3 w-[240px] shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <span className="whitespace-nowrap rounded-full px-2 py-0.5 font-display text-xs font-bold" style={{ background: `${tierColor}20`, color: tierColor }}>
                 Tier {tier}

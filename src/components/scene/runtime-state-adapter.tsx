@@ -11,6 +11,7 @@ export interface AgentSceneState {
   workstationTarget?: string
   position: [number, number, number]
   targetPosition?: [number, number, number]
+  taskResult?: "celebrate" | "error" | null
 }
 
 interface AgentMeta {
@@ -30,6 +31,7 @@ interface RuntimeState {
   setInstanceAnimation: (instanceId: string, state: AnimationState) => void
   setInstancePosition: (instanceId: string, position: [number, number, number]) => void
   setTargetPosition: (instanceId: string, target: [number, number, number]) => void
+  setTaskResult: (instanceId: string, result: "celebrate" | "error" | null) => void
   routeAgent: (agentId: string, workstationId: string) => void
   spawnAgent: (agentId: string, position?: [number, number, number]) => void
   clearScene: () => void
@@ -105,6 +107,12 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const setTaskResult = useCallback((instanceId: string, result: "celebrate" | "error" | null) => {
+    setAgents((prev) =>
+      prev.map((a) => (a.instanceId === instanceId ? { ...a, taskResult: result } : a)),
+    )
+  }, [])
+
   const routeAgent = useCallback((agentId: string, workstationId: string) => {
     const target = WORKSTATION_POSITIONS[workstationId]
     if (!target) return
@@ -161,6 +169,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
         setInstanceAnimation,
         setInstancePosition,
         setTargetPosition,
+        setTaskResult,
         routeAgent,
         spawnAgent,
         clearScene,
