@@ -3,6 +3,7 @@
 import { useState, useEffect, type FormEvent } from "react"
 import { skillName } from "@/lib/skills/skill-name"
 import { getProgressionState } from "@/lib/progression/progression-engine"
+import { HelpIcon } from "@/components/ui/help-icon"
 
 interface ModelOption {
   id: string
@@ -53,6 +54,9 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editContent, setEditContent] = useState("")
+  const [showSkillHint, setShowSkillHint] = useState(
+    typeof window !== "undefined" && !localStorage.getItem("goobs-skills-hint-shown")
+  )
 
   useEffect(() => {
     fetch("/api/models")
@@ -256,7 +260,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
 
           <div>
             <label className="mb-1.5 block font-display text-sm font-bold text-text">
-              Model
+              Model<HelpIcon>The AI model your agent uses to think and respond. Different models have different strengths.</HelpIcon>
             </label>
             <div className="relative">
               {models.length === 0 ? (
@@ -336,7 +340,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
 
         <div className="animate-fade-in stagger-4">
           <label className="mb-1.5 block font-display text-sm font-bold text-text">
-            Tool Profile
+            Tool Profile<HelpIcon>Controls what tools your agent can use. Read+Write gives file access. Full also allows bash commands. Unlock higher profiles by completing challenges.</HelpIcon>
           </label>
           <div className="relative">
             <select
@@ -430,6 +434,36 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
                   Save Skill
                 </button>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showSkillHint && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => { localStorage.setItem("goobs-skills-hint-shown", "true"); setShowSkillHint(false) }} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="glass-strong glass-border-accent w-full max-w-sm animate-scale-in rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-xl mt-0.5">💡</span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-text">Skills are knowledge blocks</h3>
+                  <p className="font-body text-xs text-subtext/60 mt-1 leading-relaxed">
+                    Write markdown that teaches your agent about a topic. The agent reads these when responding.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-black/20 border border-white/5 p-3 font-mono text-[11px] text-text/70 leading-relaxed mb-4">
+                # Python Basics{"\n"}
+                You know Python 3.12. Use type hints and async/await for I/O operations.
+              </div>
+              <button
+                type="button"
+                onClick={() => { localStorage.setItem("goobs-skills-hint-shown", "true"); setShowSkillHint(false) }}
+                className="btn-primary rounded-full px-6 py-2 font-display text-sm font-bold w-full"
+              >
+                Got it!
+              </button>
             </div>
           </div>
         </>
