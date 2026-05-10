@@ -45,7 +45,7 @@ export function LaunchScreen({ onStart }: Props) {
         </h1>
 
         <p className="font-body text-lg text-subtext/70 text-center max-w-md">
-          Create chibi AI agents — called goobs — give them skills and tools, and watch them work and roam in a living 3D workshop
+          Create chibi AI agents (called goobs), give them skills and tools, and watch them work and roam in a living 3D workshop
         </p>
 
         <div className="flex flex-col items-center gap-3">

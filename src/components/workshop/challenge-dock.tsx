@@ -139,7 +139,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
                     const done = state.completedChallenges.includes(c.id)
                     const active = !done && state.tier >= c.tier
                     return (
-                      <div key={c.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
+                      <div key={c.id} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 mb-1.5 ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
                         <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green/20 text-green" : active ? "bg-blue/20 text-blue" : "bg-white/5 text-subtext/30"}`}>
                           {done ? (
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">

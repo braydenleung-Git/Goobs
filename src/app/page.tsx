@@ -544,29 +544,39 @@ function AgentChatPanel() {
           </div>
 
           <div className="flex items-center gap-3 border-b border-white/5 px-5 py-2.5 text-[11px] flex-wrap">
-            {(() => {
-              const prog = getProgressionState()
-              const tierChallenges = CHALLENGES.filter((c) => c.tier === prog.tier)
-              const done = tierChallenges.filter((c) => prog.completedChallenges.includes(c.id)).length
-              const total = tierChallenges.length
-              const tierColors = ["", "#89b4fa", "#cba6f7", "#fab387"]
-              const tierColor = tierColors[prog.tier] || "#89b4fa"
-              const pct = total > 0 ? done / total : 1
-              return (
-                <div className="flex w-full items-center gap-2">
-                  <span className="rounded-full px-2 py-0.5 font-display text-[10px] font-bold" style={{ background: `${tierColor}20`, color: tierColor }}>
-                    Tier {prog.tier}
-                  </span>
-                  <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct * 100}%`, background: tierColor }} />
+            <span className="flex items-center gap-1.5">
+              <span className="font-body text-subtext/40 uppercase tracking-wider">State</span>
+              <span className="font-display text-text capitalize">{agent.animationState}</span>
+            </span>
+            <span className="text-white/10">·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="font-body text-subtext/40 uppercase tracking-wider">At</span>
+              <span className="font-display text-text">{agent.workstationTarget || "idle"}</span>
+            </span>
+            {profile && (
+              <>
+                <span className="text-white/10">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-body text-subtext/40 uppercase tracking-wider">Model</span>
+                  <span className="font-display text-text/80 truncate max-w-[120px]">{profile.defaultModel}</span>
+                </span>
+                <span className="text-white/10">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-body text-subtext/40 uppercase tracking-wider">Skills</span>
+                  <span className="font-display text-text/60">{skills.length}</span>
+                </span>
+                {skills.length > 0 && (
+                  <div className="flex gap-1">
+                    {skills.slice(0, 3).map((s, i) => (
+                      <span key={i} className="rounded bg-mauve/10 px-1.5 py-0.5 font-body text-[10px] text-mauve/70">
+                        {skillName(s)}
+                      </span>
+                    ))}
+                    {skills.length > 3 && <span className="font-body text-[10px] text-subtext/40">+{skills.length - 3}</span>}
                   </div>
-                  <span className="font-body text-subtext/40">{done}/{total}</span>
-                  {profile && (
-                    <span className="font-body text-subtext/30 ml-auto">{profile.defaultModel?.split("/").pop() || ""}</span>
-                  )}
-                </div>
-              )
-            })()}
+                )}
+              </>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
