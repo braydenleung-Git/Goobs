@@ -88,7 +88,7 @@ export function AgentsGrid({ onAgentCreated }: Props) {
 
     return (
       <div className="flex h-full flex-col" style={{ paddingTop: "1rem" }}>
-        <div className="flex flex-1 overflow-hidden animate-scale-in">
+        <div className="flex flex-1 animate-scale-in">
           <div className="hidden w-1/2 min-w-0 lg:block">
             <div className="h-full p-4">
               <AgentPreviewScene color={editColor} />

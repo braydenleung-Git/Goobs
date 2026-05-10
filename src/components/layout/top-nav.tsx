@@ -66,15 +66,15 @@ export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
             </span>
           </div>
 
-          <div className="flex items-center justify-end gap-3 w-[200px]">
+          <div className="flex items-center justify-end gap-3 w-[240px] shrink-0">
             <div className="flex items-center gap-2">
-              <span className="rounded-full px-2 py-0.5 font-display text-xs font-bold" style={{ background: `${tierColor}20`, color: tierColor }}>
+              <span className="whitespace-nowrap rounded-full px-2 py-0.5 font-display text-xs font-bold" style={{ background: `${tierColor}20`, color: tierColor }}>
                 Tier {tier}
               </span>
               <div className="h-1.5 w-24 overflow-hidden rounded-full bg-overlay/40">
                 <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: tierColor }} />
               </div>
-              <span className="font-body text-xs text-subtext">{done}/{total}</span>
+              <span className="whitespace-nowrap font-body text-xs text-subtext">{done}/{total}</span>
             </div>
             {onOpenConfig && (
               <button
