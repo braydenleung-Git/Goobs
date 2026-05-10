@@ -46,7 +46,7 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
         </h1>
 
         <p className="font-body text-lg text-subtext/70 text-center max-w-md">
-          Your agent workshop — create, train, and deploy AI companions in a living 3D playset
+          An AI workshop where you create agents, give them skills and tools, and watch them work in a living 3D world
         </p>
 
         <div className="flex flex-col items-center gap-3">
@@ -68,7 +68,7 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
             onClick={onSkip}
             className="font-body text-xs text-subtext/30 hover:text-subtext/60 transition-colors"
           >
-            skip to workshop
+            skip intro
           </button>
         </div>
       </div>
