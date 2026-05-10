@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Isometric Agent World</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ui-overlay > * {
+            pointer-events: auto;
+        }
+
+        /* Top Left - History Button */
+        #history-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid black;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            z-index: 11;
+        }
+
+        #history-btn:hover {
+            background: black;
+            color: white;
+        }
+
+        /* Top Right - Add Agent Button */
+        #add-agent-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid black;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            z-index: 11;
+        }
+
+        #add-agent-btn:hover {
+            background: black;
+            color: white;
+        }
+
+        /* Middle Right - Tasking Panel */
+        #tasking-panel {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 200px;
+            min-height: 150px;
+            background: white;
+            border: 1px solid black;
+            padding: 15px;
+            z-index: 11;
+        }
+
+        #tasking-panel h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #333;
+            text-align: center;
+        }
+
+        #agent-dropdown {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid black;
+            font-size: 12px;
+            margin-bottom: 10px;
+            background: white;
+        }
+
+        #idle-agents-list {
+            color: #666;
+            font-size: 12px;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        /* Bottom - Agent Navigation */
+        #bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid black;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 11;
+        }
+
+        #agent-info {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .arrow-btn {
+            width: 30px;
+            height: 30px;
+            background: white;
+            border: 1px solid black;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .arrow-btn:hover {
+            background: black;
+            color: white;
+        }
+
+        .page-number {
+            padding: 5px 10px;
+            background: white;
+            border: 1px solid black;
+            font-size: 12px;
+            min-width: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .page-number:hover {
+            background: black;
+            color: white;
+        }
+
+        #search-bar {
+            padding: 5px 10px;
+            border: 1px solid black;
+            font-size: 12px;
+            width: 150px;
+        }
+
+        #search-bar:focus {
+            outline: none;
+            border-color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Three.js Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- History Button -->
+    <button id="history-btn">History</button>
+
+    <!-- Add Agent Button -->
+    <button id="add-agent-btn">Add Agent</button>
+
+    <!-- Tasking Panel -->
+    <div id="tasking-panel">
+        <h3>Tasking</h3>
+        <select id="agent-dropdown">
+            <option value="">Select an agent...</option>
+        </select>
+        <div id="idle-agents-list">
+            <!-- Idle agents will be listed here -->
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div id="bottom-nav">
+        <div id="agent-info">
+            <span id="current-agent-text">No agents selected</span>
+        </div>
+        <div class="nav-controls">
+            <button class="arrow-btn" id="prev-btn">←</button>
+            <div class="page-number">1/1</div>
+            <button class="arrow-btn" id="next-btn">→</button>
+        </div>
+        <input type="text" id="search-bar" placeholder="Search agents...">
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
