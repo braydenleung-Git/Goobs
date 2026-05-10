@@ -10,7 +10,7 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-base">
       <div className="relative flex flex-col items-center gap-8 px-6">
         <h1
-          className="font-display text-7xl sm:text-8xl md:text-9xl font-bold leading-none tracking-tight"
+          className="font-display text-8xl sm:text-9xl md:text-[10rem] font-bold leading-none tracking-tight"
           style={{
             background: "linear-gradient(135deg, #89b4fa, #cba6f7, #f5c2e7, #a6e3a1, #fab387, #94e2d5, #89b4fa)",
             backgroundSize: "400% 400%",
