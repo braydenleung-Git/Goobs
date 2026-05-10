@@ -68,10 +68,7 @@ Browser → `http://localhost:3000` → gear icon → set base URL + API key →
 
 ```markdown
 # Python
-Python is a high-level, interpreted programming language.
-Key features: dynamic typing, extensive standard library, third-party packages via pip.
-Use `def` for functions, `class` for objects, `import` for modules.
-Keep code PEP 8 compliant. Write docstrings for all public functions.
+High-level, interpreted. Use `def` for functions, `class` for objects, `import` for modules. PEP 8 compliant.
 ```
 
 **Click "Save Skill"**
@@ -101,11 +98,7 @@ Keep code PEP 8 compliant. Write docstrings for all public functions.
 
 ```markdown
 # Shell Scripting
-Bash scripting for Linux automation.
-Shebang: `#!/bin/bash`. Variables: `$VAR`.
-Conditionals: `if [ condition ]; then commands; fi`.
-Loops: `for i in list; do commands; done`. Functions: `func() { body; }`.
-Always check exit codes with `$?`. Quote variables to prevent word splitting.
+Bash for Linux. `#!/bin/bash`, `$VAR`, `if/then/fi`, `for/do/done`. Check exit codes with `$?`.
 ```
 
 **"Save Skill" → pick colors → "Create Agent"**
