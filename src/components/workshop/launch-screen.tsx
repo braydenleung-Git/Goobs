@@ -5,10 +5,9 @@ import { resetProgression } from "@/lib/progression/progression-engine"
 
 interface Props {
   onStart: () => void
-  onSkip: () => void
 }
 
-export function LaunchScreen({ onStart, onSkip }: Props) {
+export function LaunchScreen({ onStart }: Props) {
   const [resetting, setResetting] = useState(false)
 
   const handleStart = async () => {
@@ -46,7 +45,7 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
         </h1>
 
         <p className="font-body text-lg text-subtext/70 text-center max-w-md">
-          An AI workshop where you create agents, give them skills and tools, and watch them work in a living 3D world
+          Create chibi AI agents — called goobs — give them skills and tools, and watch them work and roam in a living 3D workshop
         </p>
 
         <div className="flex flex-col items-center gap-3">
@@ -61,14 +60,7 @@ export function LaunchScreen({ onStart, onSkip }: Props) {
               boxShadow: "0 0 30px rgba(137,180,250,0.15)",
             }}
           >
-            <span className="relative z-10">{resetting ? "Resetting..." : "Start Walkthrough"}</span>
-          </button>
-
-          <button
-            onClick={onSkip}
-            className="font-body text-xs text-subtext/30 hover:text-subtext/60 transition-colors"
-          >
-            skip intro
+            <span className="relative z-10">{resetting ? "Resetting..." : "Get Started"}</span>
           </button>
         </div>
       </div>

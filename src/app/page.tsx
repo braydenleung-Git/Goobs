@@ -123,7 +123,7 @@ function WorkshopContent() {
 
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
-      {showLaunch && <LaunchScreen onStart={() => setShowLaunch(false)} onSkip={() => { resetProgression(); setShowLaunch(false) }} />}
+      {showLaunch && <LaunchScreen onStart={() => setShowLaunch(false)} />}
       <TopNav activeTab={activeTab} onTabChange={setActiveTab} onOpenConfig={() => setShowConfig(true)} />
 
       <div className="relative flex-1">
