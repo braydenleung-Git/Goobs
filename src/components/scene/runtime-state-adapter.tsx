@@ -16,6 +16,7 @@ export interface AgentSceneState {
 interface AgentMeta {
   name: string
   color: string
+  colors?: { skin: string; shirt: string; pants: string }
 }
 
 interface RuntimeState {

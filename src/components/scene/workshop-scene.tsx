@@ -222,6 +222,8 @@ function AgentCharacter({
     : state === "easter_egg" ? "#f5c2e7"
     : meta?.color ?? "#89b4fa"
 
+  const materialColors = meta?.colors ?? { skin: "#f5c2e7", shirt: "#89b4fa", pants: "#6c7086" }
+
   const height = state === "celebrate" ? 0.8 : 0.6
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
@@ -236,7 +238,7 @@ function AgentCharacter({
         scale={[0.0025, 0.0025, 0.0025]}
         position={[0, 0, 0]}
         animationState={state}
-        color={color}
+        materialColors={materialColors}
         onClick={handleClick}
         animationMapping={ANIMATION_MAPPING}
         holdLastFrame={state === "idle_long" || state === "sitting"}
@@ -364,6 +366,7 @@ function DropCatcher() {
           updateAgentMeta(pendingDrop.agentId, {
             name: a.name || pendingDrop.agentId,
             color: a.modelColorHex || "#89b4fa",
+            colors: (() => { try { return JSON.parse(a.modelColorsJson || "{}") } catch { return undefined } })(),
           })
         })
         .catch(() => {

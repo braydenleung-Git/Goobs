@@ -8,7 +8,8 @@ const AgentInputSchema = z.object({
   skillsJson: z.string().optional().default("[]"),
   toolsJson: z.string().optional().default("[]"),
   defaultModel: z.string().min(1),
-  modelColorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().default("#4f46e5"),
+  modelColorHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().default("#89b4fa"),
+  modelColorsJson: z.string().optional().default("{}"),
   prefersImageTasks: z.boolean().optional().default(false),
 })
 
