@@ -65,7 +65,6 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated, onCol
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editContent, setEditContent] = useState("")
-  const [showSkillHint, setShowSkillHint] = useState(true)
 
   useEffect(() => {
     fetch("/api/models")
@@ -460,36 +459,6 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated, onCol
                   Save Skill
                 </button>
               </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {showSkillHint && (
-        <>
-          <div className="fixed inset-0 z-50" onClick={() => setShowSkillHint(false)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="glass-strong glass-border-accent w-full max-w-sm animate-scale-in rounded-2xl p-5 shadow-2xl shadow-black/50" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-xl mt-0.5">💡</span>
-                <div>
-                  <h3 className="font-display text-base font-bold text-text">Skills are knowledge blocks</h3>
-                  <p className="font-body text-xs text-subtext/60 mt-1 leading-relaxed">
-                    Write markdown that teaches your agent about a topic. The agent reads these when responding.
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl bg-black/20 border border-white/5 p-3 font-mono text-[11px] text-text/70 leading-relaxed mb-4">
-                # Python Basics{"\n"}
-                You know Python 3.12. Use type hints and async/await for I/O operations.
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSkillHint(false)}
-                className="btn-primary rounded-full px-6 py-2 font-display text-sm font-bold w-full"
-              >
-                Got it!
-              </button>
             </div>
           </div>
         </>

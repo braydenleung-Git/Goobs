@@ -245,7 +245,7 @@ function AgentCharacter({
         playReverse={(wasIdleLongRef.current && state !== "idle_long") || (reverseSittingStartTimeRef.current !== null)}
       />
       {isSelected && (
-        <mesh position={[0, -0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.35, 0.45, 32]} />
           <meshStandardMaterial
             color={color}
@@ -343,6 +343,30 @@ function SceneClickCatcher() {
   }, [selectAgent])
 
   gl.domElement.addEventListener("pointerdown", handlePointerDown)
+  return null
+}
+
+function CameraController() {
+  const { selectedInstanceId, agents } = useRuntimeState()
+  const { camera, controls } = useThree()
+  const controlsRef = controls as any
+
+  useFrame(() => {
+    if (!controlsRef?.target) return
+    const agent = selectedInstanceId ? agents.find((a) => a.instanceId === selectedInstanceId) : undefined
+    let tx = 0, tz = 0
+    if (agent) {
+      tx = agent.position[0]
+      tz = agent.position[2]
+    }
+    controlsRef.target.lerp(new THREE.Vector3(tx, 0.4, tz), 0.06)
+    camera.position.lerp(
+      agent ? new THREE.Vector3(tx + 3, 3.5, tz + 3) : new THREE.Vector3(8, 8, 8),
+      0.06,
+    )
+    controlsRef.update()
+  })
+
   return null
 }
 
@@ -467,6 +491,7 @@ export function WorkshopScene() {
       }}
     >
       <SceneClickCatcher />
+      <CameraController />
       <DropCatcher />
       <DropPreview />
       <ambientLight intensity={0.5} />
