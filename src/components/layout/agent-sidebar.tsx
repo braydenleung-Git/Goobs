@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { skillName } from "@/lib/skills/skill-name"
 
 interface AgentSummary {
   id: string
@@ -10,11 +11,6 @@ interface AgentSummary {
   skillsJson: string
   systemPrompt: string
   isPrebuilt: boolean
-}
-
-function skillName(content: string): string {
-  const firstLine = content.trim().split("\n")[0] || ""
-  return firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || "Untitled Skill"
 }
 
 export function AgentSidebar() {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { CreateAgentForm } from "@/components/create/create-agent-form"
+import { skillName } from "@/lib/skills/skill-name"
 
 const AgentPreviewScene = dynamic(
   () => import("@/components/create/agent-preview-scene").then((m) => ({ default: m.AgentPreviewScene })),
@@ -36,11 +37,6 @@ function CapsuleIcon({ color, size = 32 }: { color: string; size?: number }) {
       <rect x={size * 0.59} y={size * 0.58} width={size * 0.06} height={size * 0.15} rx={size * 0.02} fill={color} opacity={0.5} />
     </svg>
   )
-}
-
-function skillName(content: string): string {
-  const firstLine = content.trim().split("\n")[0] || ""
-  return firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || "Untitled Skill"
 }
 
 export function AgentsGrid({ onAgentCreated }: Props) {

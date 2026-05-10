@@ -12,6 +12,7 @@ import { ConfigPanels } from "@/components/workshop/config-panels"
 import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/challenge-runner-panel"
 import { ProgressAndHistory } from "@/components/workshop/progress-and-history"
 import { DemoControls } from "@/components/workshop/demo-controls"
+import { skillName } from "@/lib/skills/skill-name"
 
 const WorkshopScene = dynamic(
   () => import("@/components/scene/workshop-scene").then((m) => ({ default: m.WorkshopScene })),
@@ -197,9 +198,11 @@ function ChallengeModal({
 function AgentChatPanel() {
   const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation } = useRuntimeState()
   const [message, setMessage] = useState("")
-  const [chatLog, setChatLog] = useState<Array<{ role: "agent" | "user"; text: string }>>([])
+  const [chatLogs, setChatLogs] = useState<Record<string, Array<{ role: "agent" | "user"; text: string }>>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
   const [sending, setSending] = useState(false)
+
+  const chatLog = selectedAgentId ? chatLogs[selectedAgentId] ?? [] : []
 
   useEffect(() => {
     if (selectedAgentId) {
@@ -235,7 +238,10 @@ function AgentChatPanel() {
 
     const userMsg = message
     setMessage("")
-    setChatLog((prev) => [...prev, { role: "user", text: userMsg }])
+    setChatLogs((prev) => ({
+      ...prev,
+      [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "user", text: userMsg }],
+    }))
     setSending(true)
     setAgentAnimation(selectedAgentId, "thinking")
 
@@ -249,18 +255,19 @@ function AgentChatPanel() {
         }),
       })
       const data = await res.json()
-      setChatLog((prev) => [...prev, { role: "agent", text: data.content || "(no response)" }])
+      setChatLogs((prev) => ({
+        ...prev,
+        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)" }],
+      }))
     } catch {
-      setChatLog((prev) => [...prev, { role: "agent", text: "*error* Failed to reach agent" }])
+      setChatLogs((prev) => ({
+        ...prev,
+        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "*error* Failed to reach agent" }],
+      }))
     } finally {
-      setSending(false)
-      setAgentAnimation(selectedAgentId, "idle")
-    }
+    setSending(false)
+    setAgentAnimation(selectedAgentId, "idle")
   }
-
-  const skillLabel = (content: string) => {
-    const firstLine = content.trim().split("\n")[0] || ""
-    return firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || "Untitled Skill"
   }
 
   return (
@@ -307,7 +314,7 @@ function AgentChatPanel() {
                     <div className="flex flex-wrap gap-1">
                       {skills.map((s, i) => (
                         <span key={i} className="rounded-lg bg-mauve/10 px-2 py-1 font-body text-[10px] text-mauve/70">
-                          {skillLabel(s)}
+                          {skillName(s)}
                         </span>
                       ))}
                     </div>

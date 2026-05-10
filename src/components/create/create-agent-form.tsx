@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, type FormEvent } from "react"
+import { skillName } from "@/lib/skills/skill-name"
 
 interface ModelOption {
   id: string
@@ -25,11 +26,6 @@ const PRESET_COLORS = [
   "#89b4fa", "#cba6f7", "#f5c2e7", "#a6e3a1",
   "#fab387", "#f38ba8", "#94e2d5", "#f9e2af",
 ]
-
-function skillName(content: string): string {
-  const firstLine = content.trim().split("\n")[0] || ""
-  return firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || "Untitled Skill"
-}
 
 export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Props) {
   const [name, setName] = useState(editingAgent?.name ?? "")
@@ -328,7 +324,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
       {editingIndex !== null && (
         <>
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setEditingIndex(null)} />
-          <div className="fixed inset-4 sm:inset-x-24 sm:inset-y-16 z-50 flex flex-col rounded-2xl glass-strong glass-border-accent overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex flex-col glass-strong glass-border-accent overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-white/5 px-5 py-3 shrink-0">
               <h3 className="font-display text-base font-bold text-text">
                 Edit Skill
