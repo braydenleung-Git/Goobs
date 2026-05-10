@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
     systemPrompt += `\n\nYou have the following skills:\n\n${skillBlocks.join("\n\n")}`
   }
 
+  // sanitize messages for strict providers (DeepSeek requires content field on every message)
+  messages = messages.map((m) => ({
+    ...m,
+    content: m.content || "",
+  }))
+
   // check tool profile
   let toolProfile = "none"
   try {

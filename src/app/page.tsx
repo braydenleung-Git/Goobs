@@ -287,12 +287,18 @@ function AgentChatPanel() {
     setAgentAnimation(selectedAgentId, "thinking")
 
     try {
+      const mappedMessages = currentLog.map((m) => ({
+        role: m.role === "agent" ? "assistant" : m.role,
+        content: m.text || "",
+      }))
+      mappedMessages.push({ role: "user" as const, content: userMsg })
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentId: selectedAgentId,
-          messages: [...currentLog, { role: "user", content: userMsg }],
+          messages: mappedMessages,
         }),
       })
 
