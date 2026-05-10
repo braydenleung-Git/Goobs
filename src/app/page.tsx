@@ -7,6 +7,7 @@ import { TopNav, type TabId } from "@/components/layout/top-nav"
 import { AgentSidebar } from "@/components/layout/agent-sidebar"
 import { CreateAgentForm } from "@/components/create/create-agent-form"
 import { AgentPreviewScene } from "@/components/create/agent-preview-scene"
+import { AgentsGrid } from "@/components/agents/agents-grid"
 import { ConfigPanels } from "@/components/workshop/config-panels"
 import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/challenge-runner-panel"
 import { ProgressAndHistory } from "@/components/workshop/progress-and-history"
@@ -131,17 +132,7 @@ function WorkshopContent() {
             )}
           </>
         ) : (
-          <div className="flex h-full gap-4 p-4" style={{ paddingTop: "1rem" }}>
-            <div className="flex-1 overflow-y-auto">
-              <div className="glass-strong glass-border-accent mx-auto max-w-lg rounded-2xl p-6">
-                <CreateAgentForm onAgentCreated={handleAgentCreated} />
-              </div>
-            </div>
-
-            <div className="hidden w-[45%] lg:block">
-              <AgentPreviewScene color={previewColor} />
-            </div>
-          </div>
+          <AgentsGrid onAgentCreated={handleAgentCreated} />
         )}
       </div>
     </div>

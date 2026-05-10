@@ -10,6 +10,15 @@ interface ModelOption {
 
 interface Props {
   onAgentCreated?: (agentId: string, name: string, color: string) => void
+  editingAgent?: {
+    id: string
+    name: string
+    systemPrompt: string
+    skillsJson: string
+    defaultModel: string
+    modelColorHex: string
+  } | null
+  onUpdated?: () => void
 }
 
 const PRESET_COLORS = [
@@ -22,13 +31,16 @@ function skillName(content: string): string {
   return firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || "Untitled Skill"
 }
 
-export function CreateAgentForm({ onAgentCreated }: Props) {
-  const [name, setName] = useState("")
-  const [systemPrompt, setSystemPrompt] = useState("")
-  const [skills, setSkills] = useState<string[]>([])
-  const [model, setModel] = useState("OpenCode/deepseek-v4-flash")
+export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Props) {
+  const [name, setName] = useState(editingAgent?.name ?? "")
+  const [systemPrompt, setSystemPrompt] = useState(editingAgent?.systemPrompt ?? "")
+  const [skills, setSkills] = useState<string[]>(() => {
+    if (editingAgent) { try { return JSON.parse(editingAgent.skillsJson) } catch { return [] } }
+    return []
+  })
+  const [model, setModel] = useState(editingAgent?.defaultModel ?? "OpenCode/deepseek-v4-flash")
   const [models, setModels] = useState<ModelOption[]>([])
-  const [color, setColor] = useState(PRESET_COLORS[0])
+  const [color, setColor] = useState(editingAgent?.modelColorHex ?? PRESET_COLORS[0])
   const [prefersImage, setPrefersImage] = useState(false)
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
@@ -89,30 +101,46 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
     setSaving(true)
     try {
       const filteredSkills = skills.filter((s) => s.trim().length > 0)
-      const res = await fetch("/api/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          systemPrompt,
-          skillsJson: JSON.stringify(filteredSkills),
-          toolsJson: "[]",
-          defaultModel: model,
-          modelColorHex: color,
-          prefersImageTasks: prefersImage,
-        }),
-      })
-      if (res.ok) {
-        const agent = await res.json()
-        setMessage(`"${name}" created!`)
-        onAgentCreated?.(agent.id, name, color)
-        setName("")
-        setSystemPrompt("")
-        setSkills([])
-        setColor(PRESET_COLORS[0])
-        setPrefersImage(false)
+      const body = {
+        name,
+        systemPrompt,
+        skillsJson: JSON.stringify(filteredSkills),
+        toolsJson: "[]",
+        defaultModel: model,
+        modelColorHex: color,
+        prefersImageTasks: prefersImage,
+      }
+
+      if (editingAgent) {
+        const res = await fetch(`/api/agents?id=${editingAgent.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (res.ok) {
+          setMessage(`"${name}" updated!`)
+          onUpdated?.()
+        } else {
+          setMessage("Failed to update agent")
+        }
       } else {
-        setMessage("Failed to create agent")
+        const res = await fetch("/api/agents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+        if (res.ok) {
+          const agent = await res.json()
+          setMessage(`"${name}" created!`)
+          onAgentCreated?.(agent.id, name, color)
+          setName("")
+          setSystemPrompt("")
+          setSkills([])
+          setColor(PRESET_COLORS[0])
+          setPrefersImage(false)
+        } else {
+          setMessage("Failed to create agent")
+        }
       }
     } catch {
       setMessage("Network error")
@@ -126,10 +154,10 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
     <div className="space-y-5">
       <div className="animate-fade-in stagger-1">
         <h2 className="font-display text-2xl font-bold text-text">
-          Create Agent
+          {editingAgent ? "Edit Agent" : "Create Agent"}
         </h2>
         <p className="mt-1 font-body text-sm text-subtext">
-          Design your workshop companion
+          {editingAgent ? "Update your workshop companion" : "Design your workshop companion"}
         </p>
       </div>
 
@@ -284,14 +312,16 @@ export function CreateAgentForm({ onAgentCreated }: Props) {
           disabled={saving || !name.trim()}
           className="btn-primary animate-fade-in stagger-5 w-full"
         >
-          {saving ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue/30 border-t-blue" />
-              Creating...
-            </span>
-          ) : (
-            "Create Agent"
-          )}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue/30 border-t-blue" />
+                {editingAgent ? "Saving..." : "Creating..."}
+              </span>
+            ) : editingAgent ? (
+              "Update Agent"
+            ) : (
+              "Create Agent"
+            )}
         </button>
       </form>
 
