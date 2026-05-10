@@ -241,10 +241,15 @@ function AgentChatPanel() {
 
   useEffect(() => {
     if (selectedAgentId) {
-      fetch(`/api/agents?id=${selectedAgentId}`)
-        .then((r) => r.json())
-        .then((a) => setProfile(a))
-        .catch(() => setProfile(null))
+      const load = () => {
+        fetch(`/api/agents?id=${selectedAgentId}`)
+          .then((r) => r.json())
+          .then((a) => setProfile(a))
+          .catch(() => setProfile(null))
+      }
+      load()
+      const interval = setInterval(load, 4000)
+      return () => clearInterval(interval)
     } else {
       setProfile(null)
     }

@@ -49,6 +49,11 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
   let systemPrompt = challenge.systemPromptTemplate
 
+  const agentPrompt = agent.systemPrompt?.trim()
+  if (agentPrompt) {
+    systemPrompt = agentPrompt + "\n\n---\n\n" + systemPrompt
+  }
+
   let agentSkills: string[] = []
   try {
     agentSkills = JSON.parse(agent.skillsJson || "[]")
