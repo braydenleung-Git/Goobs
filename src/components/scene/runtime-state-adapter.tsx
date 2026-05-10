@@ -11,17 +11,25 @@ export interface AgentSceneState {
   position: [number, number, number]
 }
 
+interface AgentMeta {
+  name: string
+  color: string
+}
+
 interface RuntimeState {
   agents: AgentSceneState[]
+  selectedAgentId: string | null
+  agentMeta: Record<string, AgentMeta>
   setAgentAnimation: (agentId: string, state: AnimationState) => void
   routeAgent: (agentId: string, workstationId: string) => void
   spawnAgent: (agentId: string) => void
   clearScene: () => void
+  selectAgent: (agentId: string | null) => void
+  updateAgentMeta: (agentId: string, meta: AgentMeta) => void
 }
 
 const RuntimeStateContext = createContext<RuntimeState | null>(null)
 
-const IDLE_POSITIONS: Record<string, [number, number, number]> = {}
 const WORKSTATION_POSITIONS: Record<string, [number, number, number]> = {
   computer: [4, 0, 0],
   "drawing-tablet": [0, 0, 4],
@@ -33,11 +41,12 @@ let spawnIndex = 0
 
 export function RuntimeStateProvider({ children }: { children: ReactNode }) {
   const [agents, setAgents] = useState<AgentSceneState[]>([])
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [agentMeta, setAgentMeta] = useState<Record<string, AgentMeta>>({})
 
   const spawnAgent = useCallback((agentId: string) => {
     const index = spawnIndex++
     const pos: [number, number, number] = [index * 1.5 - 2, 0, 0]
-    IDLE_POSITIONS[agentId] = pos
     setAgents((prev) => [
       ...prev,
       { agentId, animationState: "idle", position: pos },
@@ -64,11 +73,31 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
 
   const clearScene = useCallback(() => {
     setAgents([])
+    setSelectedAgentId(null)
+    spawnIndex = 0
+  }, [])
+
+  const selectAgent = useCallback((agentId: string | null) => {
+    setSelectedAgentId(agentId)
+  }, [])
+
+  const updateAgentMeta = useCallback((agentId: string, meta: AgentMeta) => {
+    setAgentMeta((prev) => ({ ...prev, [agentId]: meta }))
   }, [])
 
   return (
     <RuntimeStateContext.Provider
-      value={{ agents, setAgentAnimation, routeAgent, spawnAgent, clearScene }}
+      value={{
+        agents,
+        selectedAgentId,
+        agentMeta,
+        setAgentAnimation,
+        routeAgent,
+        spawnAgent,
+        clearScene,
+        selectAgent,
+        updateAgentMeta,
+      }}
     >
       {children}
     </RuntimeStateContext.Provider>

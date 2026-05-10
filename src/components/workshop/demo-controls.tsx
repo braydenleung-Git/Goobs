@@ -20,6 +20,7 @@ export function DemoControls() {
       setMessage("Reset failed — check server")
     } finally {
       setResetting(false)
+      setTimeout(() => setMessage(""), 3000)
     }
   }
 
@@ -32,54 +33,50 @@ export function DemoControls() {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900 p-4">
+    <div className="space-y-3">
+      {message && (
+        <div className="animate-fade-in rounded-xl bg-blue/10 px-4 py-2 font-body text-sm text-blue">
+          {message}
+        </div>
+      )}
+
       <div className="flex gap-2">
         <button
-          className="rounded bg-gray-700 px-3 py-1 text-xs hover:bg-gray-600 disabled:opacity-50"
+          className="btn-ghost rounded-full bg-white/[0.03] px-4 py-1.5 font-body text-xs font-medium"
           disabled={resetting}
           onClick={handleReset}
         >
           {resetting ? "Resetting..." : "Quick Reset"}
         </button>
         <button
-          className="rounded bg-red-900/50 px-3 py-1 text-xs text-red-300 hover:bg-red-900"
+          className="btn-ghost rounded-full bg-red/5 px-4 py-1.5 font-body text-xs font-medium text-red/80 hover:bg-red/10"
           onClick={handleFullReset}
         >
           Full Reset
         </button>
         <button
-          className="ml-auto rounded bg-gray-700 px-3 py-1 text-xs hover:bg-gray-600"
+          className="btn-ghost ml-auto rounded-full bg-white/[0.03] px-4 py-1.5 font-body text-xs font-medium"
           onClick={() => setShowCriteria(!showCriteria)}
         >
-          {showCriteria ? "Hide Criteria" : "Show Criteria"}
+          {showCriteria ? "Hide Criteria" : "Judging Criteria"}
         </button>
       </div>
 
-      {message && (
-        <div className="rounded bg-blue-900/30 px-3 py-1 text-xs text-blue-300">
-          {message}
-        </div>
-      )}
-
       {showCriteria && (
-        <div className="space-y-2 rounded bg-gray-950 p-3 text-xs">
-          <div className="font-semibold text-gray-300">Judging Alignment</div>
-          <div className="space-y-1 text-gray-400">
+        <div className="animate-fade-in rounded-2xl bg-base/50 p-4 font-body text-xs leading-relaxed text-subtext/80">
+          <div className="mb-2 font-display text-sm font-bold text-text">Judging Alignment</div>
+          <div className="space-y-2">
             <p>
-              <span className="text-indigo-300">Technical Execution:</span> R3F
-              3D scene, real LLM orchestration, progression engine, Prisma/SQLite
+              <span className="font-bold text-blue">Technical Execution:</span> R3F 3D scene, real LLM orchestration, progression engine, Prisma/SQLite
             </p>
             <p>
-              <span className="text-indigo-300">Innovation:</span> Embodied
-              workshop characters with physical workstation routing
+              <span className="font-bold text-mauve">Innovation:</span> Embodied workshop characters with physical workstation routing
             </p>
             <p>
-              <span className="text-indigo-300">Impact:</span> Learning loop
-              for real agent concepts — prompts, models, tools
+              <span className="font-bold text-green">Impact:</span> Learning loop for real agent concepts — prompts, models, tools
             </p>
             <p>
-              <span className="text-indigo-300">Presentation:</span> Visual arc
-              — create agent, walk to station, execute task, level up, unlock
+              <span className="font-bold text-peach">Presentation:</span> Visual arc — create agent, walk to station, execute task, level up, unlock
             </p>
           </div>
         </div>

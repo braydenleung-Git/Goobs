@@ -49,7 +49,8 @@ export function ChallengeRunnerPanel({ onRunStart, onRunComplete }: Props) {
     if (!selected || !agentId) return
     setRunning(true)
     setResult(null)
-    onRunStart?.(agentId, selectedChallenge?.workstationTarget ?? "computer")
+    const challenge = challenges.find((c) => c.slug === selected)
+    onRunStart?.(agentId, challenge?.workstationTarget ?? "computer")
     try {
       const res = await fetch("/api/challenges/run", {
         method: "POST",
@@ -79,97 +80,113 @@ export function ChallengeRunnerPanel({ onRunStart, onRunComplete }: Props) {
   const selectedChallenge = challenges.find((c) => c.slug === selected)
 
   return (
-    <div className="space-y-4 rounded-lg border border-gray-700 bg-gray-900 p-4">
-      <h2 className="text-lg font-semibold">Challenges</h2>
-
+    <div className="space-y-4">
       <div className="space-y-2">
         {challenges.map((c) => (
           <button
             key={c.slug}
-            className={`w-full rounded border px-3 py-2 text-left text-sm transition ${
+            className={`w-full rounded-2xl border px-4 py-3 text-left transition-all ${
               selected === c.slug
-                ? "border-indigo-500 bg-indigo-900/30"
-                : "border-gray-600 bg-gray-800 hover:bg-gray-750"
+                ? "border-blue/30 bg-blue/5"
+                : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
             }`}
-            onClick={() => setSelected(c.slug)}
+            onClick={() => { setSelected(c.slug); setResult(null) }}
           >
-            <div className="font-medium">{c.name}</div>
-            <div className="text-xs text-gray-400">
-              {c.description} — {c.xpReward} XP
+            <div className="font-display text-sm font-bold text-text">{c.name}</div>
+            <div className="mt-0.5 font-body text-xs text-subtext/70">
+              {c.description}
             </div>
-            {c.workstationTarget && (
-              <div className="mt-1 text-xs text-gray-500">
-                Workstation: {c.workstationTarget}
-              </div>
-            )}
+            <div className="mt-1.5 flex items-center gap-3">
+              <span className="tag-pill rounded-full bg-peach/10 px-2 py-0.5 font-body text-[10px] text-peach">
+                {c.xpReward} XP
+              </span>
+              <span className="font-body text-[10px] text-subtext/50">
+                {c.workstationTarget}
+              </span>
+            </div>
           </button>
         ))}
       </div>
 
-      <div className="space-y-2">
-        <select
-          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm"
-          value={agentId}
-          onChange={(e) => setAgentId(e.target.value)}
-        >
-          <option value="">Select agent...</option>
-          {agents.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1.5 block font-display text-xs font-bold text-subtext uppercase tracking-wider">
+            Agent
+          </label>
+          <select
+            className="input-glass"
+            value={agentId}
+            onChange={(e) => setAgentId(e.target.value)}
+          >
+            <option value="">Select agent...</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <input
-          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-sm"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder="Model name"
-        />
+        <div>
+          <label className="mb-1.5 block font-display text-xs font-bold text-subtext uppercase tracking-wider">
+            Model
+          </label>
+          <input
+            className="input-glass"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder="Model name"
+          />
+        </div>
       </div>
 
       <button
-        className={`w-full rounded px-4 py-2 text-sm font-medium ${
-          running
-            ? "cursor-not-allowed bg-gray-600"
-            : "bg-indigo-600 hover:bg-indigo-500"
-        }`}
+        className={`btn-primary w-full ${running ? "opacity-50 cursor-not-allowed" : ""}`}
         disabled={running || !selected || !agentId}
         onClick={runChallenge}
       >
-        {running ? "Running..." : "Run Challenge"}
+        {running ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue/30 border-t-blue" />
+            Running...
+          </span>
+        ) : (
+          "Run Challenge"
+        )}
       </button>
 
       {result && (
         <div
-          className={`rounded border p-3 text-sm ${
+          className={`animate-fade-in rounded-2xl border p-4 ${
             result.finalPass
-              ? "border-green-700 bg-green-900/30"
-              : "border-red-700 bg-red-900/30"
+              ? "border-green/20 bg-green/5"
+              : "border-red/20 bg-red/5"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="font-medium">
+            <span className={`font-display text-sm font-bold ${result.finalPass ? "text-green" : "text-red"}`}>
               {result.finalPass ? "PASS" : "FAIL"}
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="font-body text-xs text-subtext">
               Score: {result.totalScore}/100
             </span>
           </div>
           {result.finalPass && (
-            <div className="mt-1 text-xs text-gray-400">
+            <div className="mt-1 font-body text-xs text-subtext/70">
               +{result.xpAwarded} XP · Level {result.level}
             </div>
           )}
           {result.rationale && (
-            <div className="mt-1 text-xs text-gray-500">{result.rationale}</div>
+            <div className="mt-2 font-body text-xs text-subtext/60">
+              {result.rationale}
+            </div>
           )}
           {result.output && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-gray-400">
+            <details className="mt-3">
+              <summary className="cursor-pointer font-body text-xs text-subtext/50 hover:text-subtext">
                 Output ({result.output.length} chars)
               </summary>
-              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-gray-950 p-2 text-xs text-gray-300">
+              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-base/50 p-3 font-mono text-xs text-subtext/80">
                 {result.output}
               </pre>
             </details>

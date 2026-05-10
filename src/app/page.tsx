@@ -1,8 +1,12 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { RuntimeStateProvider, useRuntimeState } from "@/components/scene/runtime-state-adapter"
+import { TopNav, type TabId } from "@/components/layout/top-nav"
+import { AgentSidebar } from "@/components/layout/agent-sidebar"
+import { CreateAgentForm } from "@/components/create/create-agent-form"
+import { AgentPreviewScene } from "@/components/create/agent-preview-scene"
 import { ConfigPanels } from "@/components/workshop/config-panels"
 import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/challenge-runner-panel"
 import { ProgressAndHistory } from "@/components/workshop/progress-and-history"
@@ -14,21 +18,31 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { spawnAgent, routeAgent, setAgentAnimation } = useRuntimeState()
+  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, agents } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
+  const [activeTab, setActiveTab] = useState<TabId>("workshop")
+  const [showConfig, setShowConfig] = useState(false)
+  const [showChallenge, setShowChallenge] = useState(false)
+  const [previewColor, setPreviewColor] = useState("#89b4fa")
 
   useEffect(() => {
     fetch("/api/agents")
       .then((r) => r.json())
-      .then((agents: Array<{ id: string; isPrebuilt: boolean }>) => {
-        agents.filter((a) => a.isPrebuilt).forEach((a) => spawnAgent(a.id))
+      .then((list: Array<{ id: string; isPrebuilt: boolean; name: string; modelColorHex: string }>) => {
+        list.filter((a) => a.isPrebuilt).forEach((a) => {
+          spawnAgent(a.id)
+          updateAgentMeta(a.id, { name: a.name, color: a.modelColorHex || "#89b4fa" })
+        })
       })
       .catch(() => {})
-  }, [spawnAgent])
+  }, [spawnAgent, updateAgentMeta])
 
-  const handleAgentCreated = useCallback((agentId: string) => {
+  const handleAgentCreated = useCallback((agentId: string, name: string, color: string) => {
     spawnAgent(agentId)
-  }, [spawnAgent])
+    updateAgentMeta(agentId, { name, color })
+    setPreviewColor(color)
+    setTimeout(() => setActiveTab("workshop"), 800)
+  }, [spawnAgent, updateAgentMeta])
 
   const handleRunStart = useCallback((agentId: string, workstationTarget: string) => {
     setAgentAnimation(agentId, "walking")
@@ -70,34 +84,122 @@ function WorkshopContent() {
   }, [setAgentAnimation])
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-gray-950 text-gray-100">
-      <header className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
-        <h1 className="text-lg font-bold tracking-tight">
-          Goobs <span className="text-xs font-normal text-gray-500">The Agent Workshop</span>
-        </h1>
-      </header>
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
+      <TopNav activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-80 flex-shrink-0 space-y-4 overflow-y-auto border-r border-gray-800 p-4">
-          <ConfigPanels onAgentCreated={handleAgentCreated} />
-          <ChallengeRunnerPanel onRunStart={handleRunStart} onRunComplete={handleRunComplete} />
-        </div>
+      <div className="relative flex-1">
+        {activeTab === "workshop" ? (
+          <>
+            <div className="absolute inset-0">
+              <WorkshopScene />
+            </div>
 
-        <div className="flex flex-1 flex-col">
-          <div className="flex-1">
-            <WorkshopScene />
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
+              <div className="glass rounded-full px-3 py-2 flex items-center gap-2">
+                <button
+                  onClick={() => setShowChallenge(true)}
+                  className="btn-ghost rounded-full px-4 py-1.5 font-body text-xs font-medium"
+                >
+                  Run Challenge
+                </button>
+                <div className="h-4 w-px bg-white/5" />
+                <button
+                  onClick={() => setShowConfig(true)}
+                  className="btn-ghost rounded-full px-4 py-1.5 font-body text-xs font-medium"
+                >
+                  Config
+                </button>
+                <div className="h-4 w-px bg-white/5" />
+                <div className="px-2">
+                  <ProgressAndHistory ref={progressRef} compact />
+                </div>
+              </div>
+            </div>
+
+            <AgentSidebar />
+
+            {showConfig && (
+              <ConfigModal onClose={() => setShowConfig(false)} />
+            )}
+
+            {showChallenge && (
+              <ChallengeModal
+                onClose={() => setShowChallenge(false)}
+                onRunStart={handleRunStart}
+                onRunComplete={handleRunComplete}
+              />
+            )}
+          </>
+        ) : (
+          <div className="flex h-full gap-4 p-4" style={{ paddingTop: "1rem" }}>
+            <div className="flex-1 overflow-y-auto">
+              <div className="glass-strong glass-border-accent mx-auto max-w-lg rounded-2xl p-6">
+                <CreateAgentForm onAgentCreated={handleAgentCreated} />
+              </div>
+            </div>
+
+            <div className="hidden w-[45%] lg:block">
+              <AgentPreviewScene color={previewColor} />
+            </div>
           </div>
-          <div className="flex gap-4 border-t border-gray-800 p-2">
-            <div className="w-72">
-              <ProgressAndHistory ref={progressRef} />
-            </div>
-            <div className="flex-1">
-              <DemoControls />
-            </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ConfigModal({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <div className="modal-backdrop z-40 animate-fade-in" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="glass-strong glass-border-accent w-full max-w-md animate-scale-in rounded-2xl p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-text">Configuration</h2>
+            <button onClick={onClose} className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs">
+              ✕
+            </button>
+          </div>
+          <ConfigPanels />
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <DemoControls />
           </div>
         </div>
       </div>
-    </div>
+    </>
+  )
+}
+
+function ChallengeModal({
+  onClose,
+  onRunStart,
+  onRunComplete,
+}: {
+  onClose: () => void
+  onRunStart: (agentId: string, workstationTarget: string) => void
+  onRunComplete: (result: RunResult, agentId: string) => void
+}) {
+  return (
+    <>
+      <div className="modal-backdrop z-40 animate-fade-in" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="glass-strong glass-border-accent w-full max-w-lg animate-scale-in rounded-2xl p-6 max-h-[85vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-text">Run Challenge</h2>
+            <button onClick={onClose} className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs">
+              ✕
+            </button>
+          </div>
+          <ChallengeRunnerPanel onRunStart={onRunStart} onRunComplete={onRunComplete} />
+        </div>
+      </div>
+    </>
   )
 }
 
