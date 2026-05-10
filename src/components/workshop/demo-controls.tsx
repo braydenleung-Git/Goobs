@@ -3,7 +3,6 @@
 import { useState } from "react"
 
 export function DemoControls() {
-  const [showCriteria, setShowCriteria] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -54,33 +53,7 @@ export function DemoControls() {
         >
           Full Reset
         </button>
-        <button
-          className="btn-ghost ml-auto rounded-full bg-white/[0.03] px-4 py-1.5 font-body text-xs font-medium"
-          onClick={() => setShowCriteria(!showCriteria)}
-        >
-          {showCriteria ? "Hide Criteria" : "Judging Criteria"}
-        </button>
       </div>
-
-      {showCriteria && (
-        <div className="animate-fade-in rounded-2xl bg-base/50 p-4 font-body text-xs leading-relaxed text-subtext/80">
-          <div className="mb-2 font-display text-sm font-bold text-text">Judging Alignment</div>
-          <div className="space-y-2">
-            <p>
-              <span className="font-bold text-blue">Technical Execution:</span> R3F 3D scene, real LLM orchestration, progression engine, Prisma/SQLite
-            </p>
-            <p>
-              <span className="font-bold text-mauve">Innovation:</span> Embodied workshop characters with physical workstation routing
-            </p>
-            <p>
-              <span className="font-bold text-green">Impact:</span> Learning loop for real agent concepts — prompts, models, tools
-            </p>
-            <p>
-              <span className="font-bold text-peach">Presentation:</span> Visual arc — create agent, walk to station, execute task, level up, unlock
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
