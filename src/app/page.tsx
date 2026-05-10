@@ -296,62 +296,73 @@ function AgentChatPanel() {
         }),
       })
 
-      if (!res.ok || !res.body) {
-        throw new Error("Response error")
-      }
+      if (!res.ok) throw new Error("Response error")
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ""
-      let fullText = ""
+      const contentType = res.headers.get("content-type") || ""
+      const isStreaming = contentType.includes("text/event-stream")
 
-      setChatLogs((prev) => ({
-        ...prev,
-        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "" }],
-      }))
+      if (isStreaming) {
+        // ---- streaming (no tools) ----
+        const reader = res.body!.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ""
+        let fullText = ""
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+        setChatLogs((prev) => ({
+          ...prev,
+          [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "" }],
+        }))
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() || ""
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
 
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith("data: ")) continue
-          const data = trimmed.slice(6)
-          if (data === "[DONE]") continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.choices?.[0]?.delta?.content
-            if (delta) {
-              fullText += delta
-              setChatLogs((prev) => {
-                const msgs = [...(prev[selectedAgentId] ?? [])]
-                const last = msgs[msgs.length - 1]
-                if (last && last.role === "agent") {
-                  msgs[msgs.length - 1] = { ...last, text: fullText }
-                }
-                return { ...prev, [selectedAgentId]: msgs }
-              })
-            }
-          } catch {}
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || ""
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed.startsWith("data: ")) continue
+            const data = trimmed.slice(6)
+            if (data === "[DONE]") continue
+            try {
+              const parsed = JSON.parse(data)
+              const delta = parsed.choices?.[0]?.delta?.content
+              if (delta) {
+                fullText += delta
+                setChatLogs((prev) => {
+                  const msgs = [...(prev[selectedAgentId] ?? [])]
+                  const last = msgs[msgs.length - 1]
+                  if (last && last.role === "agent") {
+                    msgs[msgs.length - 1] = { ...last, text: fullText }
+                  }
+                  return { ...prev, [selectedAgentId]: msgs }
+                })
+              }
+            } catch {}
+          }
         }
+
+        if (!fullText) {
+          setChatLogs((prev) => {
+            const msgs = [...(prev[selectedAgentId] ?? [])]
+            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], text: "(no response)" }
+            return { ...prev, [selectedAgentId]: msgs }
+          })
+        }
+      } else {
+        // ---- JSON (tools) ----
+        const data = await res.json()
+        setChatLogs((prev) => ({
+          ...prev,
+          [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)" }],
+        }))
       }
 
       if (!chatSentRef.current) {
         chatSentRef.current = true
         ;(window as any).__goobsProgressionEvent?.("chat_sent")
-      }
-
-      if (!fullText) {
-        setChatLogs((prev) => {
-          const msgs = [...(prev[selectedAgentId] ?? [])]
-          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], text: "(no response)" }
-          return { ...prev, [selectedAgentId]: msgs }
-        })
       }
     } catch {
       setChatLogs((prev) => ({
