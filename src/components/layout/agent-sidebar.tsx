@@ -35,13 +35,21 @@ export function AgentSidebar() {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-40 flex items-center justify-center group"
-        style={{ paddingTop: "4.5rem", height: "100%" }}
+        className="fixed left-0 top-0 z-40 flex items-center justify-start group cursor-pointer"
+        style={{ paddingTop: "4.5rem", height: "100%", width: "28px" }}
+        onMouseEnter={() => setHovered(true)}
       >
-        <div
-          className="h-24 w-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-all cursor-pointer"
-          onMouseEnter={() => setHovered(true)}
-        />
+        <div className="flex flex-col items-center gap-1 px-1">
+          <div className="h-20 w-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all" />
+          <svg
+            width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="3" strokeLinecap="round"
+            className="text-white/[0.05] group-hover:text-white/[0.12] transition-all"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+          <div className="h-20 w-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all" />
+        </div>
       </div>
 
       <div

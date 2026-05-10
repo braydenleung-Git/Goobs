@@ -52,7 +52,7 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
 
   return (
     <>
-      <div className="fixed z-30 flex flex-col gap-2" style={{ bottom: "1.5rem", left: "1rem" }}>
+      <div className="fixed z-30 flex flex-col gap-2" style={{ bottom: "1.5rem", left: "3.5rem" }}>
         {toasts.length > 0 && (
           <div className="flex flex-col gap-2 mb-2">
             {toasts.map((t) => (
