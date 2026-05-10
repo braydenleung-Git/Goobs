@@ -26,6 +26,7 @@
 - D-016: Scene growth is progression-driven through workstation unlocks.
 - D-017: Workstation mapping is fixed for MVP: computer=coding, drawing-tablet=image generation, whiteboard=planning/brainstorming, book=writing.
 - D-018: Image-generation tasks require image-capable model selection.
+- D-019: Provider endpoint is `http://homelab/bifrost/v1` with no API key; provider config handles optional/empty keys gracefully.
 
 ## Open Questions
 
