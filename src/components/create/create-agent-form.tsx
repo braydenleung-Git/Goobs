@@ -63,9 +63,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           setModel(list[0].id)
         }
       })
-      .catch(() => {
-        setModels([{ id: "OpenCode/deepseek-v4-flash", name: "DeepSeek V4 Flash (fallback)", capabilities: ["text"] }])
-      })
+      .catch(() => {})
   }, [editingAgent])
 
   const openEditor = (index: number | null) => {
