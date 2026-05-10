@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react"
 import { skillName } from "@/lib/skills/skill-name"
+import { getProgressionState } from "@/lib/progression/progression-engine"
 
 interface ModelOption {
   id: string
@@ -312,7 +313,8 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           </label>
           <div className="relative">
             <select
-              className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all"
+              disabled={getProgressionState().tier < 2}
+              className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
                 background: "rgba(49, 50, 68, 0.4)",
                 border: "1px solid rgba(205, 214, 244, 0.08)",
@@ -333,7 +335,9 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <p className="mt-1 font-body text-[10px] text-subtext/40">Unlocked through progression (Tier 2+)</p>
+          <p className="mt-1 font-body text-[10px] text-subtext/40">
+            {getProgressionState().tier < 2 ? "Unlocks after completing all Tier 1 challenges" : "Select tool permissions for this agent"}
+          </p>
         </div>
 
         <button

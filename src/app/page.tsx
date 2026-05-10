@@ -23,7 +23,7 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview } = useRuntimeState()
+  const { routeAgent, setAgentAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
   const [activeTab, setActiveTab] = useState<TabId>("workshop")
   const [showConfig, setShowConfig] = useState(false)
@@ -58,11 +58,10 @@ function WorkshopContent() {
   }, [clearDropPreview])
 
   const handleAgentCreated = useCallback((agentId: string, name: string, color: string) => {
-    spawnAgent(agentId)
     updateAgentMeta(agentId, { name, color })
     setPreviewColor(color)
     setTimeout(() => setActiveTab("workshop"), 800)
-  }, [spawnAgent, updateAgentMeta])
+  }, [updateAgentMeta])
 
   const handleRunStart = useCallback((agentId: string, workstationTarget: string) => {
     routeAgent(agentId, workstationTarget)

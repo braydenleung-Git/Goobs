@@ -49,12 +49,13 @@ export interface ProgressionDelta {
 }
 
 const STORAGE_KEY = "goobs-progression"
-const TIER_1_XP_MIN = 90
+const TIER_1_XP_MIN = 140
 
 export const CHALLENGES: ChallengeDef[] = [
   { id: "create-agent", title: "Create Agent", description: "Create your first agent", tier: 1, xpReward: 20, trigger: "event", eventType: "agent_created" },
   { id: "add-skill", title: "Add Skill", description: "Add a skill to your agent", tier: 1, xpReward: 30, trigger: "event", eventType: "skill_added" },
   { id: "deploy-workshop", title: "Deploy to Workshop", description: "Drag your agent into the scene", tier: 1, xpReward: 40, trigger: "event", eventType: "agent_deployed" },
+  { id: "first-chat", title: "First Chat", description: "Send a message to your agent", tier: 1, xpReward: 50, trigger: "event", eventType: "chat_sent" },
   { id: "field-two-agents", title: "Field Two Agents", description: "Deploy 2 unique agents", tier: 2, xpReward: 60, trigger: "counter", counterCheck: (c) => c.deployedAgentIds.length >= 2, unlocks: ["filesystem"] },
   { id: "write-two-files", title: "Write Two Files", description: "Write 2 files using agent tools", tier: 2, xpReward: 100, trigger: "counter", counterCheck: (c) => c.writeFileCount >= 2, unlocks: ["bash"] },
 ]
