@@ -17,6 +17,7 @@ interface Props {
     name: string
     systemPrompt: string
     skillsJson: string
+    toolsJson: string
     defaultModel: string
     modelColorHex: string
   } | null
