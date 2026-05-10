@@ -215,7 +215,7 @@ function AgentCharacter({
     <group ref={groupRef} position={[position[0], 0, position[2]]}>
       <FBXModelLoader
         url="/3d/goobs.fbx"
-        scale={[0.01, 0.01, 0.01]}
+        scale={[0.005, 0.005, 0.005]}
         position={[0, 0, 0]}
         animationState={state}
         color={color}
