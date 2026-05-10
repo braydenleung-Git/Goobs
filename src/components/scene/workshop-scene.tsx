@@ -80,7 +80,7 @@ function AgentCharacter({
           />
         </mesh>
       )}
-      <Html position={[0, 1.2, 0]} center className="pointer-events-none">
+      <Html position={[0, 1.2, 0]} center className="pointer-events-none" zIndexRange={[1, 2]}>
         <div
           className="rounded-full px-2.5 py-0.5 font-display text-[10px] font-bold whitespace-nowrap"
           style={{
@@ -127,7 +127,7 @@ function WorkstationMarker({
         <boxGeometry args={[0.4, unlocked ? 0.25 : 0.08, 0.4]} />
         <meshStandardMaterial color={color} transparent opacity={unlocked ? 0.3 : 0.05} />
       </mesh>
-      <Html position={[0, unlocked ? 0.7 : 0.25, 0]} center className="pointer-events-none">
+      <Html position={[0, unlocked ? 0.7 : 0.25, 0]} center className="pointer-events-none" zIndexRange={[1, 2]}>
         <div
           className={`rounded-full px-2.5 py-0.5 font-display text-[10px] font-bold whitespace-nowrap ${
             unlocked
@@ -184,6 +184,7 @@ function DropCatcher() {
 
     if (hit) {
       spawnAgent(pendingDrop.agentId, [point.x, 0, point.z])
+      ;(window as any).__goobsWalkthroughEvent?.("agent_spawned")
       fetch(`/api/agents?id=${pendingDrop.agentId}`)
         .then((r) => r.json())
         .then((a) => {

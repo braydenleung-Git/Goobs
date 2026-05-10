@@ -81,6 +81,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
     })
     setEditingIndex(null)
     setEditContent("")
+    ;(window as any).__goobsWalkthroughEvent?.("skill_added")
   }
 
   const removeSkill = (index: number) => {
@@ -129,6 +130,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           const agent = await res.json()
           setMessage(`"${name}" created!`)
           onAgentCreated?.(agent.id, name, color)
+          ;(window as any).__goobsWalkthroughEvent?.("agent_created")
           setName("")
           setSystemPrompt("")
           setSkills([])
@@ -324,43 +326,48 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
       {editingIndex !== null && (
         <>
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setEditingIndex(null)} />
-          <div className="fixed inset-0 z-50 flex flex-col glass-strong glass-border-accent overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/5 px-5 py-3 shrink-0">
-              <h3 className="font-display text-base font-bold text-text">
-                Edit Skill
-              </h3>
-              <button
-                type="button"
-                onClick={() => setEditingIndex(null)}
-                className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 p-4 min-h-0">
-              <textarea
-                className="h-full w-full resize-none rounded-xl bg-black/20 border border-white/5 px-4 py-3 text-sm font-mono text-text leading-relaxed focus:border-blue/30 focus:shadow-[0_0_0_2px_rgba(137,180,250,0.15)] transition-all outline-none"
-                placeholder="Paste skill markdown content here..."
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 border-t border-white/5 px-5 py-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setEditingIndex(null)}
-                className="btn-ghost rounded-xl px-4 py-2 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveSkill}
-                disabled={!editContent.trim()}
-                className="btn-primary rounded-xl px-5 py-2 text-sm"
-              >
-                Save Skill
-              </button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="glass-strong glass-border-accent w-full max-w-lg animate-scale-in rounded-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+                <h3 className="font-display text-base font-bold text-text">
+                  Edit Skill
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setEditingIndex(null)}
+                  className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4">
+                <textarea
+                  className="h-56 w-full resize-none rounded-xl bg-black/20 border border-white/5 px-4 py-3 text-sm font-mono text-text leading-relaxed focus:border-blue/30 focus:shadow-[0_0_0_2px_rgba(137,180,250,0.15)] transition-all outline-none"
+                  placeholder="Paste skill markdown content here..."
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 border-t border-white/5 px-5 py-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingIndex(null)}
+                  className="btn-ghost rounded-xl px-4 py-2 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveSkill}
+                  disabled={!editContent.trim()}
+                  className="btn-primary rounded-xl px-5 py-2 text-sm"
+                >
+                  Save Skill
+                </button>
+              </div>
             </div>
           </div>
         </>

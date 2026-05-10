@@ -35,10 +35,22 @@ export function AgentSidebar() {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-40 h-full w-3 cursor-pointer"
-        style={{ paddingTop: "4.5rem" }}
+        className="fixed left-0 top-0 z-40 flex items-center justify-start group cursor-pointer"
+        style={{ paddingTop: "4.5rem", height: "100%", width: "28px" }}
         onMouseEnter={() => setHovered(true)}
-      />
+      >
+        <div className="flex flex-col items-center gap-1 px-1">
+          <div className="h-20 w-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all" />
+          <svg
+            width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="3" strokeLinecap="round"
+            className="text-white/[0.05] group-hover:text-white/[0.12] transition-all"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+          <div className="h-20 w-[3px] rounded-full bg-white/[0.06] group-hover:bg-white/[0.15] transition-all" />
+        </div>
+      </div>
 
       <div
         className={`fixed left-0 top-0 z-50 h-full transition-all duration-200 ease-out ${
@@ -47,7 +59,7 @@ export function AgentSidebar() {
         style={{ paddingTop: "4.5rem", paddingBottom: "0.75rem", paddingLeft: "0.75rem" }}
         onMouseLeave={() => { setHovered(false); setSelectedInfo(null) }}
       >
-        <div className="glass-strong glass-border-accent flex h-full w-72 flex-col rounded-2xl overflow-hidden">
+        <div className="glass-strong glass-border-accent flex h-full w-60 flex-col rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
             <h3 className="font-display text-sm font-bold text-text">Agents</h3>
             <span className="font-body text-[10px] text-subtext/50">{agents.length}</span>

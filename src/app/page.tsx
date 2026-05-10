@@ -11,9 +11,11 @@ import { AgentPreviewScene } from "@/components/create/agent-preview-scene"
 import { AgentsGrid } from "@/components/agents/agents-grid"
 import { ConfigPanels } from "@/components/workshop/config-panels"
 import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/challenge-runner-panel"
-import { ProgressAndHistory } from "@/components/workshop/progress-and-history"
 import { DemoControls } from "@/components/workshop/demo-controls"
+import { LaunchScreen } from "@/components/workshop/launch-screen"
+import { ChallengeDock } from "@/components/workshop/challenge-dock"
 import { skillName } from "@/lib/skills/skill-name"
+import { getWalkthroughState, setWalkthroughStarted, processWalkthroughReward, WALKTHROUGH_STEPS, type WalkthroughEventType } from "@/lib/walkthrough/walkthrough-engine"
 
 const WorkshopScene = dynamic(
   () => import("@/components/scene/workshop-scene").then((m) => ({ default: m.WorkshopScene })),
@@ -27,6 +29,13 @@ function WorkshopContent() {
   const [showConfig, setShowConfig] = useState(false)
   const [showChallenge, setShowChallenge] = useState(false)
   const [previewColor, setPreviewColor] = useState("#89b4fa")
+  const [showLaunch, setShowLaunch] = useState(true)
+  const [toasts, setToasts] = useState<Array<{ id: string; step: (typeof WALKTHROUGH_STEPS)[0]; level: number }>>([])
+
+  useEffect(() => {
+    const state = getWalkthroughState()
+    if (state.started) setShowLaunch(false)
+  }, [])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -80,9 +89,26 @@ function WorkshopContent() {
     progressRef.current?.refresh()
   }, [setAgentAnimation])
 
+  const handleWalkthroughEvent = useCallback((type: WalkthroughEventType) => {
+    const step = WALKTHROUGH_STEPS.find((s) => s.trigger === type)
+    if (!step) return
+    const state = getWalkthroughState()
+    if (state.completed.includes(step.id)) return
+    const { xpReward, level } = processWalkthroughReward(step.id)
+    const toastId = crypto.randomUUID()
+    setToasts((prev) => [...prev, { id: toastId, step, level }])
+    progressRef.current?.refresh()
+  }, [])
+
+  useEffect(() => {
+    ;(window as any).__goobsWalkthroughEvent = handleWalkthroughEvent
+    return () => { delete (window as any).__goobsWalkthroughEvent }
+  }, [handleWalkthroughEvent])
+
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
-      <TopNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {showLaunch && <LaunchScreen onStart={() => { setWalkthroughStarted(); setShowLaunch(false) }} onSkip={() => setShowLaunch(false)} />}
+      <TopNav activeTab={activeTab} onTabChange={setActiveTab} onOpenConfig={() => setShowConfig(true)} />
 
       <div className="relative flex-1">
         {activeTab === "workshop" ? (
@@ -95,30 +121,7 @@ function WorkshopContent() {
               <WorkshopScene />
             </div>
 
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
-              <div className="glass rounded-full px-3 py-2 flex items-center gap-2">
-                <button
-                  onClick={() => setShowChallenge(true)}
-                  className="btn-ghost rounded-full px-4 py-1.5 font-body text-xs font-medium"
-                >
-                  Run Challenge
-                </button>
-                <div className="h-4 w-px bg-white/5" />
-                <button
-                  onClick={() => setShowConfig(true)}
-                  className="btn-ghost rounded-full px-4 py-1.5 font-body text-xs font-medium"
-                >
-                  Config
-                </button>
-                <div className="h-4 w-px bg-white/5" />
-                <div className="px-2">
-                  <ProgressAndHistory ref={progressRef} compact />
-                </div>
-              </div>
-            </div>
-
             <AgentSidebar />
-
             <AgentChatPanel />
 
             {showConfig && (
@@ -137,6 +140,7 @@ function WorkshopContent() {
           <AgentsGrid onAgentCreated={handleAgentCreated} />
         )}
       </div>
+      {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />}
     </div>
   )
 }
@@ -221,6 +225,7 @@ function AgentChatPanel() {
   const [chatLogs, setChatLogs] = useState<Record<string, Array<{ role: "agent" | "user"; text: string }>>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
   const [sending, setSending] = useState(false)
+  const chatSentRef = useRef(false)
 
   const chatLog = selectedAgentId ? chatLogs[selectedAgentId] ?? [] : []
 
@@ -257,6 +262,7 @@ function AgentChatPanel() {
     if (!message.trim() || sending) return
 
     const userMsg = message
+    const currentLog = chatLog
     setMessage("")
     setChatLogs((prev) => ({
       ...prev,
@@ -264,8 +270,6 @@ function AgentChatPanel() {
     }))
     setSending(true)
     setAgentAnimation(selectedAgentId, "thinking")
-
-    const currentLog = chatLog
 
     try {
       const res = await fetch("/api/chat", {
@@ -322,6 +326,11 @@ function AgentChatPanel() {
         }
       }
 
+      if (!chatSentRef.current) {
+        chatSentRef.current = true
+        ;(window as any).__goobsWalkthroughEvent?.("chat_sent")
+      }
+
       if (!fullText) {
         setChatLogs((prev) => {
           const msgs = [...(prev[selectedAgentId] ?? [])]
@@ -338,12 +347,13 @@ function AgentChatPanel() {
     setSending(false)
     setAgentAnimation(selectedAgentId, "idle")
   }
+  }
 
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={() => selectAgent(null)} />
       <aside
-        className="fixed right-0 top-0 z-50 flex h-full w-[340px] flex-col animate-slide-in-right"
+        className="fixed right-0 top-0 z-50 flex h-full w-[500px] flex-col animate-slide-in-right"
         style={{ paddingTop: "4.5rem", paddingBottom: "0.75rem", paddingRight: "0.75rem" }}
       >
         <div
@@ -359,42 +369,38 @@ function AgentChatPanel() {
             <button onClick={() => selectAgent(null)} className="btn-ghost flex h-7 w-7 items-center justify-center rounded-full p-0 text-xs shrink-0">✕</button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 border-b border-white/5 px-5 py-3">
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <div className="font-body text-[10px] text-subtext uppercase tracking-wider">State</div>
-              <div className="font-display text-sm text-text capitalize">{agent.animationState}</div>
-            </div>
-            <div className="rounded-xl bg-white/5 px-3 py-2">
-              <div className="font-body text-[10px] text-subtext uppercase tracking-wider">Position</div>
-              <div className="font-display text-sm text-text">{agent.workstationTarget || "idle"}</div>
-            </div>
-          </div>
-
-          <div className="border-b border-white/5 px-5 py-3 space-y-3">
+          <div className="flex items-center gap-3 border-b border-white/5 px-5 py-2.5 text-[11px] flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="font-body text-subtext/40 uppercase tracking-wider">State</span>
+              <span className="font-display text-text capitalize">{agent.animationState}</span>
+            </span>
+            <span className="text-white/10">·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="font-body text-subtext/40 uppercase tracking-wider">At</span>
+              <span className="font-display text-text">{agent.workstationTarget || "idle"}</span>
+            </span>
             {profile && (
               <>
-                <div>
-                  <div className="font-body text-[10px] text-subtext/40 uppercase tracking-wider mb-1.5">Model</div>
-                  <div className="font-display text-xs text-text/80">{profile.defaultModel}</div>
-                </div>
-                <div>
-                  <div className="font-body text-[10px] text-subtext/40 uppercase tracking-wider mb-1.5">Skills</div>
-                  {skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {skills.map((s, i) => (
-                        <span key={i} className="rounded-lg bg-mauve/10 px-2 py-1 font-body text-[10px] text-mauve/70">
-                          {skillName(s)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="font-body text-[11px] text-subtext/30">None</span>
-                  )}
-                </div>
-                <div>
-                  <div className="font-body text-[10px] text-subtext/40 uppercase tracking-wider mb-1.5">Tools</div>
-                  <span className="font-body text-[11px] text-subtext/30">Integration coming soon</span>
-                </div>
+                <span className="text-white/10">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-body text-subtext/40 uppercase tracking-wider">Model</span>
+                  <span className="font-display text-text/80 truncate max-w-[120px]">{profile.defaultModel}</span>
+                </span>
+                <span className="text-white/10">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-body text-subtext/40 uppercase tracking-wider">Skills</span>
+                  <span className="font-display text-text/60">{skills.length}</span>
+                </span>
+                {skills.length > 0 && (
+                  <div className="flex gap-1">
+                    {skills.slice(0, 3).map((s, i) => (
+                      <span key={i} className="rounded bg-mauve/10 px-1.5 py-0.5 font-body text-[10px] text-mauve/70">
+                        {skillName(s)}
+                      </span>
+                    ))}
+                    {skills.length > 3 && <span className="font-body text-[10px] text-subtext/40">+{skills.length - 3}</span>}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -438,7 +444,6 @@ function AgentChatPanel() {
       </aside>
     </>
   )
-}
 }
 
 export default function WorkshopPage() {
