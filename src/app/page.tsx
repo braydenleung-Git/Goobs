@@ -23,7 +23,7 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, requestDrop } = useRuntimeState()
+  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
   const [activeTab, setActiveTab] = useState<TabId>("workshop")
   const [showConfig, setShowConfig] = useState(false)
@@ -31,6 +31,7 @@ function WorkshopContent() {
   const [previewColor, setPreviewColor] = useState("#89b4fa")
   const [showLaunch, setShowLaunch] = useState(true)
   const [toasts, setToasts] = useState<Array<{ id: string; step: (typeof WALKTHROUGH_STEPS)[0]; level: number }>>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const state = getWalkthroughState()
@@ -42,12 +43,24 @@ function WorkshopContent() {
     const agentId = e.dataTransfer.getData("text/plain")
     if (!agentId) return
     requestDrop(agentId, e.clientX, e.clientY)
-  }, [requestDrop])
+    clearDropPreview()
+  }, [requestDrop, clearDropPreview])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = "copy"
-  }, [])
+    setDropPreview(e.clientX, e.clientY)
+  }, [setDropPreview])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (
+      e.clientX <= rect.left || e.clientX >= rect.right ||
+      e.clientY <= rect.top || e.clientY >= rect.bottom
+    ) {
+      clearDropPreview()
+    }
+  }, [clearDropPreview])
 
   const handleAgentCreated = useCallback((agentId: string, name: string, color: string) => {
     spawnAgent(agentId)
@@ -117,11 +130,12 @@ function WorkshopContent() {
               className="absolute inset-0"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
             >
               <WorkshopScene />
             </div>
 
-            <AgentSidebar />
+            <AgentSidebar onSidebarChange={setSidebarOpen} />
             <AgentChatPanel />
 
             {showConfig && (
@@ -140,7 +154,7 @@ function WorkshopContent() {
           <AgentsGrid onAgentCreated={handleAgentCreated} />
         )}
       </div>
-      {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />}
+      {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} sidebarOpen={sidebarOpen} />}
     </div>
   )
 }

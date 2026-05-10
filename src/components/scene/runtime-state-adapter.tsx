@@ -22,6 +22,7 @@ interface RuntimeState {
   selectedAgentId: string | null
   agentMeta: Record<string, AgentMeta>
   pendingDrop: { agentId: string; screenX: number; screenY: number } | null
+  dropPreview: { screenX: number; screenY: number } | null
   setAgentAnimation: (agentId: string, state: AnimationState) => void
   routeAgent: (agentId: string, workstationId: string) => void
   spawnAgent: (agentId: string, position?: [number, number, number]) => void
@@ -30,6 +31,8 @@ interface RuntimeState {
   updateAgentMeta: (agentId: string, meta: AgentMeta) => void
   requestDrop: (agentId: string, screenX: number, screenY: number) => void
   clearDrop: () => void
+  setDropPreview: (screenX: number, screenY: number) => void
+  clearDropPreview: () => void
 }
 
 const RuntimeStateContext = createContext<RuntimeState | null>(null)
@@ -48,6 +51,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   const [agentMeta, setAgentMeta] = useState<Record<string, AgentMeta>>({})
   const [pendingDrop, setPendingDrop] = useState<{ agentId: string; screenX: number; screenY: number } | null>(null)
+  const [dropPreview, setDropPreviewState] = useState<{ screenX: number; screenY: number } | null>(null)
 
   const spawnAgent = useCallback((agentId: string, position?: [number, number, number]) => {
     if (position) {
@@ -105,6 +109,14 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     setPendingDrop(null)
   }, [])
 
+  const setDropPreview = useCallback((screenX: number, screenY: number) => {
+    setDropPreviewState({ screenX, screenY })
+  }, [])
+
+  const clearDropPreview = useCallback(() => {
+    setDropPreviewState(null)
+  }, [])
+
   return (
     <RuntimeStateContext.Provider
       value={{
@@ -112,6 +124,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
         selectedAgentId,
         agentMeta,
         pendingDrop,
+        dropPreview,
         setAgentAnimation,
         routeAgent,
         spawnAgent,
@@ -120,6 +133,8 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
         updateAgentMeta,
         requestDrop,
         clearDrop,
+        setDropPreview,
+        clearDropPreview,
       }}
     >
       {children}

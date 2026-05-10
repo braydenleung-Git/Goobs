@@ -11,6 +11,7 @@ interface Toast {
 
 interface Props {
   toasts: Toast[]
+  sidebarOpen?: boolean
 }
 
 function DockToast({ toast, onDone }: { toast: Toast; onDone: () => void }) {
@@ -32,7 +33,7 @@ function DockToast({ toast, onDone }: { toast: Toast; onDone: () => void }) {
   )
 }
 
-export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onDismissToast: (id: string) => void }) {
+export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: { toasts: Toast[]; onDismissToast: (id: string) => void; sidebarOpen?: boolean }) {
   const [completed, setCompleted] = useState<string[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
 
@@ -52,7 +53,13 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
 
   return (
     <>
-      <div className="fixed z-30 flex flex-col gap-2" style={{ bottom: "1.5rem", left: "3.5rem" }}>
+      <div
+        className="fixed z-30 flex flex-col gap-2 transition-all duration-200 ease-out"
+        style={{
+          bottom: "1.5rem",
+          left: sidebarOpen ? "17rem" : "1rem",
+        }}
+      >
         {toasts.length > 0 && (
           <div className="flex flex-col gap-2 mb-2">
             {toasts.map((t) => (
@@ -69,7 +76,7 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
                 <rect x="9" y="3" width="6" height="4" rx="1" />
               </svg>
             </div>
-            <span className="font-display text-sm font-bold text-text">Walkthrough</span>
+            <span className="font-display text-sm font-bold text-text">Challenges</span>
             <span className="ml-auto rounded-full bg-mauve/15 px-2 py-0.5 font-display text-xs font-bold text-mauve">
               {completedCount}/{totalSteps}
             </span>
