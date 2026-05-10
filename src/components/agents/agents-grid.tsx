@@ -114,9 +114,9 @@ export function AgentsGrid({ onAgentCreated }: Props) {
             </div>
             <div className="glass-strong glass-border-accent rounded-2xl p-6">
               {editingAgent ? (
-                <CreateAgentForm key={editing} editingAgent={editingAgent} onUpdated={handleUpdated} />
+                <CreateAgentForm key={editing} editingAgent={editingAgent} onUpdated={handleUpdated} onColorsChange={setEditColors} />
               ) : (
-                <CreateAgentForm onAgentCreated={handleCreated} />
+                <CreateAgentForm onAgentCreated={handleCreated} onColorsChange={setEditColors} />
               )}
             </div>
           </div>

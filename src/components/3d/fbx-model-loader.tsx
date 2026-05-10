@@ -1,7 +1,7 @@
 "use client"
 
 import { useFrame, type ThreeEvent } from "@react-three/fiber"
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import * as THREE from "three"
 import { FBXLoader } from "three-stdlib"
 
@@ -40,6 +40,27 @@ export function FBXModelLoader({
   const mixerRef = useRef<THREE.AnimationMixer | null>(null)
   const activeActionRef = useRef<THREE.AnimationAction | null>(null)
 
+  const applyColors = useCallback(() => {
+    const root = modelRef.current
+    if (!root || !materialColors) return
+    root.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      const mats = Array.isArray(child.material) ? child.material : [child.material]
+      for (const mat of mats) {
+        const name = (mat as any)?.name?.trim()?.toLowerCase() ?? ""
+        if (!name) continue
+        let match: string | undefined
+        if (name.includes("skin")) match = materialColors.skin
+        else if (name.includes("shirt")) match = materialColors.shirt
+        else if (name.includes("pant")) match = materialColors.pants
+        if (match) {
+          ;(mat as THREE.MeshStandardMaterial).color = new THREE.Color(match)
+          mat.needsUpdate = true
+        }
+      }
+    })
+  }, [materialColors])
+
   useEffect(() => {
     const loader = new FBXLoader()
     loader.load(url, (fbx) => {
@@ -48,25 +69,11 @@ export function FBXModelLoader({
       fbx.position.set(...position)
       fbx.rotation.set(...rotation)
 
+      // Store model reference
+      modelRef.current = fbx
+
       // Apply colors by material name
-      if (materialColors) {
-        fbx.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            const mat = child.material
-            const name = (child.name || (mat as any)?.name || "").trim().toLowerCase()
-            if (mat) {
-              let match: string | undefined
-              if (name.includes("skin")) match = materialColors.skin
-              else if (name.includes("shirt")) match = materialColors.shirt
-              else if (name.includes("pant")) match = materialColors.pants
-              if (match) {
-                ;(mat as THREE.MeshStandardMaterial).color = new THREE.Color(match)
-                mat.needsUpdate = true
-              }
-            }
-          }
-        })
-      }
+      applyColors()
 
       // Extract animations from NLA strips
       if (fbx.animations && fbx.animations.length > 0) {
@@ -108,6 +115,13 @@ export function FBXModelLoader({
       activeActionRef.current = null
     }
   }, [url])
+
+  // Re-apply colors when materialColors changes
+  useEffect(() => {
+    if (modelRef.current) {
+      applyColors()
+    }
+  }, [applyColors])
 
   // Handle animation state changes
   useEffect(() => {
