@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { getProgressionState, CHALLENGES, type Tier } from "@/lib/progression/progression-engine"
+import { getProgressionState, CHALLENGES, type Tier, type ChallengeDef } from "@/lib/progression/progression-engine"
+import { ChallengeDetailPopup } from "./challenge-detail-popup"
 
 interface Toast {
   id: string
@@ -67,6 +68,7 @@ function TierBadge({ tier }: { tier: Tier }) {
 
 export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
   const [state, setState] = useState(getProgressionState)
+  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeDef | null>(null)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -86,7 +88,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
     if (c.id === "field-two-agents") return `Agents deployed: ${state.counters.deployCount}/2`
     if (c.id === "write-a-file") return `Files written: ${state.counters.writeFileCount}/1`
     if (c.id === "exec-bash") return `Commands run: ${state.counters.bashExecCount}/1`
-    if (c.id === "build-script") return `Scripts built: ${state.counters.buildScriptCount}/3`
+    if (c.id === "build-script") return `Scripts built: ${state.counters.buildScriptCount}/2`
     return ""
   }
 
@@ -139,7 +141,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
                     const done = state.completedChallenges.includes(c.id)
                     const active = !done && state.tier >= c.tier
                     return (
-                      <div key={c.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
+                      <div key={c.id} onClick={() => setSelectedChallenge(c)} className={`cursor-pointer flex items-center gap-3 rounded-xl px-3 py-2.5 mb-1.5 transition-colors hover:bg-white/[0.03] ${done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"}`}>
                         <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green/20 text-green" : active ? "bg-blue/20 text-blue" : "bg-white/5 text-subtext/30"}`}>
                           {done ? (
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
@@ -170,6 +172,7 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
           </div>
         </div>
       </div>
+      {selectedChallenge && <ChallengeDetailPopup challenge={selectedChallenge} onDone={() => setSelectedChallenge(null)} />}
     </>
   )
 }

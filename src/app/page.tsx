@@ -14,6 +14,9 @@ import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/chal
 import { DemoControls } from "@/components/workshop/demo-controls"
 import { LaunchScreen } from "@/components/workshop/launch-screen"
 import { ChallengeDock } from "@/components/workshop/challenge-dock"
+import { IntroCards } from "@/components/workshop/intro-cards"
+import { ToolIntroModal } from "@/components/workshop/tool-intro-modal"
+import { HelpIcon } from "@/components/ui/help-icon"
 import { skillName } from "@/lib/skills/skill-name"
 import { dispatchProgressionEvent, resetProgression, getProgressionState, CHALLENGES, type ProgressionEventType } from "@/lib/progression/progression-engine"
 
@@ -30,6 +33,8 @@ function WorkshopContent() {
   const [showChallenge, setShowChallenge] = useState(false)
   const [previewColor, setPreviewColor] = useState("#89b4fa")
   const [showLaunch, setShowLaunch] = useState(true)
+  const [showIntro, setShowIntro] = useState(true)
+  const [showToolIntro, setShowToolIntro] = useState(false)
   const [toasts, setToasts] = useState<Array<{ id: string; title: string; subtitle: string }>>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -113,6 +118,9 @@ function WorkshopContent() {
       const toastId = crypto.randomUUID()
       setToasts((prev) => [...prev, { id: toastId, title: delta.toast!.title, subtitle: delta.toast!.subtitle }])
     }
+    if (delta.tierChanged && delta.newTier === 2) {
+      setShowToolIntro(true)
+    }
     progressRef.current?.refresh()
   }, [])
 
@@ -123,7 +131,9 @@ function WorkshopContent() {
 
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
-      {showLaunch && <LaunchScreen onStart={() => setShowLaunch(false)} onSkip={() => { resetProgression(); setShowLaunch(false) }} />}
+      {showLaunch && <LaunchScreen onStart={() => setShowLaunch(false)} />}
+      {showIntro && !showLaunch && <IntroCards onDone={() => setShowIntro(false)} />}
+      {showToolIntro && <ToolIntroModal onDone={() => setShowToolIntro(false)} />}
       <TopNav activeTab={activeTab} onTabChange={setActiveTab} onOpenConfig={() => setShowConfig(true)} />
 
       <div className="relative flex-1">
@@ -527,7 +537,7 @@ function AgentChatPanel() {
     <>
       <div className="fixed inset-0 z-40" onClick={() => selectAgent(null)} />
       <aside
-        className="fixed right-0 top-0 z-50 flex h-full w-[500px] flex-col animate-slide-in-right"
+        className="fixed right-0 top-0 z-50 flex h-full w-[500px] flex-col animate-panel-in"
         style={{ paddingTop: "4.5rem", paddingBottom: "0.75rem", paddingRight: "0.75rem" }}
       >
         <div
@@ -564,6 +574,7 @@ function AgentChatPanel() {
                 <span className="flex items-center gap-1.5">
                   <span className="font-body text-subtext/40 uppercase tracking-wider">Skills</span>
                   <span className="font-display text-text/60">{skills.length}</span>
+                  <HelpIcon>Skills are markdown knowledge blocks your agent can reference. Add skills in the agent&apos;s edit panel.</HelpIcon>
                 </span>
                 {skills.length > 0 && (
                   <div className="flex gap-1">

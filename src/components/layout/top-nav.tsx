@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { getProgressionState, CHALLENGES } from "@/lib/progression/progression-engine"
 
 export type TabId = "workshop" | "agents"
 
@@ -11,28 +12,22 @@ interface TopNavProps {
 }
 
 export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
-  const [xp, setXp] = useState(0)
-  const [level, setLevel] = useState(1)
+  const [progressState, setProgressState] = useState(getProgressionState())
 
   useEffect(() => {
-    const load = () => {
-      if (typeof window === "undefined") return
-      const stored = localStorage.getItem("goobs-progress")
-      if (stored) {
-        try {
-          const p = JSON.parse(stored)
-          setXp(p.xp ?? 0)
-          setLevel(p.level ?? 1)
-        } catch {}
-      }
-    }
-    load()
-    const interval = setInterval(load, 3000)
+    const update = () => setProgressState(getProgressionState())
+    update()
+    const interval = setInterval(update, 3000)
     return () => clearInterval(interval)
   }, [])
 
-  const maxXpForLevel = level * 500 + 200
-  const xpPercent = Math.min(100, (xp / maxXpForLevel) * 100)
+  const tier = progressState.tier
+  const tierColors = ["", "#89b4fa", "#cba6f7", "#fab387"]
+  const tierColor = tierColors[tier] || "#89b4fa"
+  const tierChallenges = CHALLENGES.filter((c) => c.tier === tier)
+  const done = tierChallenges.filter((c) => progressState.completedChallenges.includes(c.id)).length
+  const total = tierChallenges.length
+  const pct = total > 0 ? (done / total) * 100 : 0
 
   const tabs: { id: TabId; label: string }[] = [
     { id: "workshop", label: "Workshop" },
@@ -71,23 +66,15 @@ export function TopNav({ activeTab, onTabChange, onOpenConfig }: TopNavProps) {
             </span>
           </div>
 
-          <div className="flex items-center justify-end gap-3 w-[200px]">
+          <div className="flex items-center justify-end gap-3 w-[240px] shrink-0">
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-mauve/15 px-2.5 py-0.5 font-display text-xs font-bold text-mauve">
-                Lv.{level}
+              <span className="whitespace-nowrap rounded-full px-2 py-0.5 font-display text-xs font-bold" style={{ background: `${tierColor}20`, color: tierColor }}>
+                Tier {tier}
               </span>
               <div className="h-1.5 w-24 overflow-hidden rounded-full bg-overlay/40">
-                <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{
-                    width: `${xpPercent}%`,
-                    background: "linear-gradient(90deg, #cba6f7, #89b4fa, #94e2d5)",
-                  }}
-                />
+                <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: tierColor }} />
               </div>
-              <span className="font-body text-xs text-subtext">
-                {xp}/{maxXpForLevel}
-              </span>
+              <span className="whitespace-nowrap font-body text-xs text-subtext">{done}/{total}</span>
             </div>
             {onOpenConfig && (
               <button
