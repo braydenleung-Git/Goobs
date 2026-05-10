@@ -197,10 +197,19 @@ function ChallengeModal({
 }
 
 function Markdown({ text }: { text: string }) {
-  const html = marked.parse(text, { breaks: true, async: false }) as string
+  const [html, setHtml] = useState("")
+  useEffect(() => {
+    const result = marked.parse(text, { breaks: true })
+    if (typeof result === "string") {
+      setHtml(result)
+    } else {
+      result.then(setHtml).catch(() => setHtml(text))
+    }
+  }, [text])
+  if (!html) return <span className="opacity-40">{text}</span>
   return (
     <div
-      className="prose prose-invert prose-sm max-w-none break-words [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_code]:bg-white/5 [&_code]:rounded [&_code]:px-1 [&_code]:text-xs [&_p]:leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4"
+      className="max-w-none break-words [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_code]:bg-white/5 [&_code]:rounded [&_code]:px-1 [&_code]:text-xs [&_p]:leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
