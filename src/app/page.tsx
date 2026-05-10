@@ -101,6 +101,9 @@ function WorkshopContent() {
     for (let i = 0; i < bashCalls.length; i++) {
       ;(window as any).__goobsProgressionEvent?.("tool_exec_bash")
     }
+    if (writeCalls.length > 0 && bashCalls.length > 0) {
+      ;(window as any).__goobsProgressionEvent?.("tool_build_script")
+    }
     progressRef.current?.refresh()
   }, [setAgentAnimation])
 
@@ -386,78 +389,132 @@ function AgentChatPanel() {
       if (!res.ok) throw new Error("Response error")
 
       const contentType = res.headers.get("content-type") || ""
-      const isStreaming = contentType.includes("text/event-stream")
 
-      if (isStreaming) {
-        // ---- streaming (no tools) ----
-        const reader = res.body!.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ""
-        let fullText = ""
+      // ---- SSE streaming (both tools and no-tools paths) ----
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let fullText = ""
+      const toolCallsAcc: Array<{ name: string }> = []
 
-        setChatLogs((prev) => ({
-          ...prev,
-          [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "" }],
-        }))
+      setChatLogs((prev) => ({
+        ...prev,
+        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "" }],
+      }))
 
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n")
-          buffer = lines.pop() || ""
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
 
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (!trimmed.startsWith("data: ")) continue
-            const data = trimmed.slice(6)
-            if (data === "[DONE]") continue
-            try {
-              const parsed = JSON.parse(data)
-              const delta = parsed.choices?.[0]?.delta?.content
-              if (delta) {
-                fullText += delta
-                setChatLogs((prev) => {
-                  const msgs = [...(prev[selectedAgentId] ?? [])]
-                  const last = msgs[msgs.length - 1]
-                  if (last && last.role === "agent") {
-                    msgs[msgs.length - 1] = { ...last, text: fullText }
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith("data: ")) continue
+          const data = trimmed.slice(6)
+          if (data === "[DONE]") continue
+          try {
+            const parsed = JSON.parse(data)
+
+            // custom tool-path events
+            if (parsed.type === "text") {
+              fullText += parsed.content
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            if (parsed.type === "tool_call") {
+              toolCallsAcc.push({ name: parsed.name })
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") {
+                  const calls = last.toolCalls ? [...last.toolCalls] : []
+                  calls.push({ name: parsed.name, arguments: parsed.arguments, output: "", stdout: "", stderr: "", files: undefined })
+                  msgs[msgs.length - 1] = { ...last, toolCalls: calls }
+                }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            if (parsed.type === "tool_result") {
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent" && last.toolCalls) {
+                  const calls = [...last.toolCalls]
+                  const idx = calls.length - 1
+                  if (idx >= 0) {
+                    calls[idx] = { ...calls[idx], output: parsed.output, stdout: parsed.stdout, stderr: parsed.stderr, exitCode: parsed.exitCode, files: parsed.files }
                   }
-                  return { ...prev, [selectedAgentId]: msgs }
-                })
-              }
-            } catch {}
-          }
-        }
+                  msgs[msgs.length - 1] = { ...last, toolCalls: calls }
+                }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
 
-        if (!fullText) {
-          setChatLogs((prev) => {
-            const msgs = [...(prev[selectedAgentId] ?? [])]
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], text: "(no response)" }
-            return { ...prev, [selectedAgentId]: msgs }
-          })
+            if (parsed.type === "done") {
+              if (!fullText) fullText = parsed.content || "(no response)"
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            // standard OpenAI SSE (no-tools path)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) {
+              fullText += delta
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+            }
+          } catch {}
         }
-      } else {
-        // ---- JSON (tools) ----
-        const data = await res.json()
-        setChatLogs((prev) => ({
-          ...prev,
-          [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)", toolCalls: data.toolCalls }],
-        }))
-        const writeCalls = (data.toolCalls || []).filter((tc: any) => tc.name === "write_file")
-        for (let i = 0; i < writeCalls.length; i++) {
-          ;(window as any).__goobsProgressionEvent?.("tool_write_file")
-        }
-        const bashCalls = (data.toolCalls || []).filter((tc: any) => tc.name === "exec_bash")
-        for (let i = 0; i < bashCalls.length; i++) {
-          ;(window as any).__goobsProgressionEvent?.("tool_exec_bash")
-        }
+      }
+
+      if (!fullText) {
+        setChatLogs((prev) => {
+          const msgs = [...(prev[selectedAgentId] ?? [])]
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], text: "(no response)" }
+          return { ...prev, [selectedAgentId]: msgs }
+        })
       }
 
       if (!chatSentRef.current) {
         chatSentRef.current = true
         ;(window as any).__goobsProgressionEvent?.("chat_sent")
+      }
+
+      // fire progression events for tool calls from chat
+      const hasWrite = toolCallsAcc.some((tc) => tc.name === "write_file")
+      const hasBash = toolCallsAcc.some((tc) => tc.name === "exec_bash")
+      const hasBoth = hasWrite && hasBash
+      if (hasWrite) {
+        const count = toolCallsAcc.filter((tc) => tc.name === "write_file").length
+        for (let i = 0; i < count; i++) (window as any).__goobsProgressionEvent?.("tool_write_file")
+      }
+      if (hasBash) {
+        const count = toolCallsAcc.filter((tc) => tc.name === "exec_bash").length
+        for (let i = 0; i < count; i++) (window as any).__goobsProgressionEvent?.("tool_exec_bash")
+      }
+      if (hasBoth) {
+        ;(window as any).__goobsProgressionEvent?.("tool_build_script")
       }
     } catch {
       setChatLogs((prev) => ({

@@ -76,15 +76,17 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
   }, [])
 
   const visibleTiers = ([1, 2, 3] as Tier[]).filter((t) => t === state.tier && CHALLENGES.some((c) => c.tier === t))
+  const allDone = CHALLENGES.every((c) => state.completedChallenges.includes(c.id))
   const completedCount = state.completedChallenges.length
   const totalChallenges = CHALLENGES.length
 
-  const tierLabels: Record<number, string> = { 1: "Onboarding", 2: "Tools" }
+  const tierLabels: Record<number, string> = { 1: "Onboarding", 2: "Tools", 3: "Automation" }
 
   const counterLabel = (c: typeof CHALLENGES[number]) => {
     if (c.id === "field-two-agents") return `Agents deployed: ${state.counters.deployCount}/2`
     if (c.id === "write-a-file") return `Files written: ${state.counters.writeFileCount}/1`
     if (c.id === "exec-bash") return `Commands run: ${state.counters.bashExecCount}/1`
+    if (c.id === "build-script") return `Scripts built: ${state.counters.buildScriptCount}/1`
     return ""
   }
 
@@ -117,7 +119,13 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
           </div>
 
           <div className="p-3 space-y-2">
-            {visibleTiers.map((tier) => {
+            {allDone ? (
+              <div className="text-center py-4 px-2">
+                <div className="text-2xl mb-2">🏆</div>
+                <div className="font-display text-sm font-bold text-green">All Challenges Complete</div>
+                <div className="font-body text-[10px] text-subtext/50 mt-1">You&apos;ve mastered Goobs. Now go build something.</div>
+              </div>
+            ) : visibleTiers.map((tier) => {
               const challenges = CHALLENGES.filter((c) => c.tier === tier)
               const allDone = challenges.every((c) => state.completedChallenges.includes(c.id))
               return (

@@ -76,72 +76,91 @@ export async function POST(request: NextRequest) {
   if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`
 
   if (toolProfile !== "none") {
-    // ---- tool-enabled chat (non-streaming, multi-turn) ----
+    // ---- tool-enabled chat (streaming, multi-turn) ----
     const registry = new ToolRegistry()
     registry.register(createFilesystemTools(agentId, `chat-${agentId}`))
     registry.register(createBashTool(agentId))
     const toolDefinitions = registry.getDefinitions()
 
-    const chatMessages: Array<any> = [...messages]
-    let finalContent = ""
-    let turnCount = 0
-    const MAX_TURNS = 5
-    const toolCallsLog: Array<{ name: string; arguments: string; output: string; stdout: string; stderr: string; exitCode?: number; files?: string[] }> = []
+    const stream = new ReadableStream({
+      async start(controller) {
+        const enc = (s: string) => controller.enqueue(new TextEncoder().encode(s))
 
-    while (turnCount < MAX_TURNS) {
-      const result = await runChatCompletion({
-        model: agent.defaultModel,
-        systemPrompt,
-        messages: chatMessages as any,
-        tools: toolDefinitions,
-      })
+        const chatMessages: Array<any> = [...messages]
+        let finalContent = ""
+        let turnCount = 0
+        const MAX_TURNS = 5
 
-      turnCount++
-
-      if (result.toolCalls && result.toolCalls.length > 0) {
-        chatMessages.push({
-          role: "assistant",
-          content: result.content || null,
-          tool_calls: result.toolCalls,
-        })
-
-        for (const tc of result.toolCalls) {
-          let args: Record<string, unknown> = {}
-          try { args = JSON.parse(tc.function.arguments) } catch {}
-
-          const execResult = await registry.execute(tc.function.name, args)
-
-          toolCallsLog.push({
-            name: tc.function.name,
-            arguments: tc.function.arguments,
-            output: execResult.output,
-            stdout: execResult.data?.stdout ?? "",
-            stderr: execResult.data?.stderr ?? "",
-            exitCode: execResult.data?.exitCode,
-            files: execResult.data?.files,
+        while (turnCount < MAX_TURNS) {
+          const result = await runChatCompletion({
+            model: agent.defaultModel,
+            systemPrompt,
+            messages: chatMessages as any,
+            tools: toolDefinitions,
           })
 
-          chatMessages.push({
-            role: "tool",
-            tool_call_id: tc.id,
-            content: execResult.output,
-          })
+          turnCount++
+
+          // stream assistant text if present
+          if (result.content) {
+            enc(`data: ${JSON.stringify({ type: "text", content: result.content })}\n\n`)
+          }
+
+          if (result.toolCalls && result.toolCalls.length > 0) {
+            chatMessages.push({
+              role: "assistant",
+              content: result.content || null,
+              tool_calls: result.toolCalls,
+            })
+
+            for (const tc of result.toolCalls) {
+              let args: Record<string, unknown> = {}
+              try { args = JSON.parse(tc.function.arguments) } catch {}
+
+              enc(`data: ${JSON.stringify({ type: "tool_call", name: tc.function.name, arguments: tc.function.arguments })}\n\n`)
+
+              const execResult = await registry.execute(tc.function.name, args)
+
+              enc(`data: ${JSON.stringify({
+                type: "tool_result",
+                name: tc.function.name,
+                output: execResult.output,
+                stdout: execResult.data?.stdout ?? "",
+                stderr: execResult.data?.stderr ?? "",
+                exitCode: execResult.data?.exitCode,
+                files: execResult.data?.files,
+              })}\n\n`)
+
+              chatMessages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: execResult.output,
+              })
+            }
+          } else {
+            finalContent = result.content
+            break
+          }
         }
-      } else {
-        finalContent = result.content
-        break
-      }
-    }
 
-    if (!finalContent) {
-      const last = [...chatMessages].reverse().find(
-        (m) => m.role === "assistant" && m.content && typeof m.content === "string"
-      )
-      finalContent = last?.content ?? "(no response)"
-    }
+        if (!finalContent) {
+          const last = [...chatMessages].reverse().find(
+            (m) => m.role === "assistant" && m.content && typeof m.content === "string"
+          )
+          finalContent = last?.content ?? "(no response)"
+        }
 
-    return new Response(JSON.stringify({ content: finalContent, toolCalls: toolCallsLog }), {
-      headers: { "Content-Type": "application/json" },
+        enc(`data: ${JSON.stringify({ type: "done", content: finalContent })}\n\n`)
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     })
   }
 
