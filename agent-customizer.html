@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Customizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .viewer-section {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        .customization-section {
+            width: 400px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .customization-section h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .control-group input[type="text"],
+        .control-group input[type="number"],
+        .control-group select,
+        .control-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .control-group input:focus,
+        .control-group select:focus,
+        .control-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .control-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-picker-wrapper input[type="color"] {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .color-picker-wrapper input[type="text"] {
+            flex: 1;
+        }
+
+        .skills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .skill-tag {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .skill-tag:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .skill-tag.selected {
+            background: #764ba2;
+        }
+
+        .title-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin: -30px -30px 25px -30px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+
+        .title-bar h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .try-button, .save-button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .try-button {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .try-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(72, 187, 120, 0.3);
+        }
+
+        .save-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .model-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="viewer-section">
+            <div id="canvas-container"></div>
+            <div class="loading-indicator" id="loading">
+                <div class="loading-spinner"></div>
+                <div>Loading Agent Model...</div>
+            </div>
+            <div class="model-info" id="model-info" style="display: none;">
+                <div>Model: agent.fbx</div>
+                <div>Polygons: <span id="polygon-count">0</span></div>
+                <div>Animations: <span id="animation-count">0</span></div>
+            </div>
+        </div>
+
+        <div class="customization-section">
+            <div class="title-bar">
+                <h2>Edit Agent</h2>
+            </div>
+            
+            <div class="control-group">
+                <label for="agent-name">Agent Name</label>
+                <input type="text" id="agent-name" placeholder="Enter agent name..." value="Goob">
+            </div>
+
+            <div class="control-group">
+                <label for="agent-color">Primary Color</label>
+                <div class="color-picker-wrapper">
+                    <input type="color" id="agent-color" value="#667eea">
+                    <input type="text" id="agent-color-text" value="#667eea" placeholder="#667eea">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="secondary-color">Secondary Color</label>
+                <div class="color-picker-wrapper">
+                    <input type="color" id="secondary-color" value="#764ba2">
+                    <input type="text" id="secondary-color-text" value="#764ba2" placeholder="#764ba2">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="agent-scale">Scale</label>
+                <input type="range" id="agent-scale" min="0.5" max="2" step="0.1" value="1">
+                <div style="text-align: center; color: #666; font-size: 12px;">Scale: <span id="scale-value">1.0</span></div>
+            </div>
+
+            <div class="control-group">
+                <label for="rotation-speed">Rotation Speed</label>
+                <input type="range" id="rotation-speed" min="0" max="2" step="0.1" value="0.5">
+                <div style="text-align: center; color: #666; font-size: 12px;">Speed: <span id="rotation-value">0.5</span></div>
+            </div>
+
+            <div class="control-group">
+                <label for="system-prompt">System Prompt</label>
+                <textarea id="system-prompt" placeholder="You are a helpful AI assistant...">You are a helpful AI assistant with expertise in coding and problem-solving.</textarea>
+            </div>
+
+            <div class="control-group">
+                <label>Skills</label>
+                <div class="skills-container">
+                    <div class="skill-tag" data-skill="coding">Coding</div>
+                    <div class="skill-tag" data-skill="writing">Writing</div>
+                    <div class="skill-tag" data-skill="analysis">Analysis</div>
+                    <div class="skill-tag" data-skill="research">Research</div>
+                    <div class="skill-tag" data-skill="design">Design</div>
+                    <div class="skill-tag" data-skill="debugging">Debugging</div>
+                    <div class="skill-tag" data-skill="planning">Planning</div>
+                    <div class="skill-tag" data-skill="translation">Translation</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="model-select">AI Model</label>
+                <select id="model-select">
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    <option value="claude-3">Claude 3</option>
+                    <option value="gemini-pro">Gemini Pro</option>
+                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+                </select>
+            </div>
+
+            <div class="action-buttons">
+                <button class="try-button" onclick="tryAgent()">Try Agent</button>
+                <button class="save-button" onclick="saveAgent()">Save Agent</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, agent, controls;
+        let mixer;
+        let rotationSpeed = 0.5;
+        let selectedSkills = new Set();
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.Fog(0x000000, 10, 50);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+
+            // Renderer setup
+            const container = document.getElementById('canvas-container');
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.near = 0.1;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -10;
+            directionalLight.shadow.camera.right = 10;
+            directionalLight.shadow.camera.top = 10;
+            directionalLight.shadow.camera.bottom = -10;
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0x667eea, 1, 100);
+            pointLight.position.set(-5, 5, 0);
+            scene.add(pointLight);
+
+            // Ground plane
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 3;
+            controls.maxDistance = 20;
+
+            // Load FBX model
+            loadFBXModel();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function loadFBXModel() {
+            const loader = new THREE.FBXLoader();
+            
+            // Try to load the actual agent.fbx file
+            loader.load('agent.fbx', function(object) {
+                agent = object;
+                
+                // Scale and position the model
+                agent.scale.set(0.01, 0.01, 0.01);
+                agent.position.set(0, 0, 0);
+                
+                // Enable shadows
+                agent.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                scene.add(agent);
+
+                // Setup animations if available
+                if (object.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(object);
+                    const action = mixer.clipAction(object.animations[0]);
+                    action.play();
+                }
+
+                // Update model info
+                updateModelInfo(object);
+                
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('model-info').style.display = 'block';
+
+            }, function(progress) {
+                console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+            }, function(error) {
+                console.error('Error loading FBX model:', error);
+                
+                // Create a placeholder agent if FBX fails to load
+                createPlaceholderAgent();
+                
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('model-info').style.display = 'block';
+            });
+        }
+
+        function createPlaceholderAgent() {
+            // Create a simple robot-like placeholder
+            const group = new THREE.Group();
+
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.8);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x667eea });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.5;
+            body.castShadow = true;
+            group.add(body);
+
+            // Head
+            const headGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0x764ba2 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 2.8;
+            head.castShadow = true;
+            group.add(head);
+
+            // Eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const eyeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.5
+            });
+            
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.15, 2.9, 0.3);
+            group.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.15, 2.9, 0.3);
+            group.add(rightEye);
+
+            // Arms
+            const armGeometry = new THREE.BoxGeometry(0.3, 1.2, 0.3);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: 0x667eea });
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.8, 1.5, 0);
+            leftArm.castShadow = true;
+            group.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.8, 1.5, 0);
+            rightArm.castShadow = true;
+            group.add(rightArm);
+
+            // Legs
+            const legGeometry = new THREE.BoxGeometry(0.4, 1, 0.4);
+            const legMaterial = new THREE.MeshStandardMaterial({ color: 0x764ba2 });
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.3, 0.5, 0);
+            leftLeg.castShadow = true;
+            group.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.3, 0.5, 0);
+            rightLeg.castShadow = true;
+            group.add(rightLeg);
+
+            agent = group;
+            scene.add(agent);
+
+            // Update model info
+            document.getElementById('polygon-count').textContent = 'N/A (Placeholder)';
+            document.getElementById('animation-count').textContent = '0';
+        }
+
+        function updateModelInfo(object) {
+            let polygonCount = 0;
+            object.traverse(function(child) {
+                if (child.isMesh && child.geometry) {
+                    if (child.geometry.index) {
+                        polygonCount += child.geometry.index.count / 3;
+                    } else if (child.geometry.attributes.position) {
+                        polygonCount += child.geometry.attributes.position.count / 3;
+                    }
+                }
+            });
+            
+            document.getElementById('polygon-count').textContent = Math.floor(polygonCount);
+            document.getElementById('animation-count').textContent = object.animations.length;
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate agent
+            if (agent && rotationSpeed > 0) {
+                agent.rotation.y += rotationSpeed * 0.01;
+            }
+
+            // Update controls
+            controls.update();
+
+            // Update animation mixer
+            if (mixer) {
+                mixer.update(0.016); // ~60fps
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Customization controls
+        document.getElementById('agent-color').addEventListener('input', function(e) {
+            const color = e.target.value;
+            document.getElementById('agent-color-text').value = color;
+            updateAgentColor(color);
+        });
+
+        document.getElementById('agent-color-text').addEventListener('input', function(e) {
+            const color = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(color)) {
+                document.getElementById('agent-color').value = color;
+                updateAgentColor(color);
+            }
+        });
+
+        document.getElementById('secondary-color').addEventListener('input', function(e) {
+            const color = e.target.value;
+            document.getElementById('secondary-color-text').value = color;
+            updateSecondaryColor(color);
+        });
+
+        document.getElementById('secondary-color-text').addEventListener('input', function(e) {
+            const color = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(color)) {
+                document.getElementById('secondary-color').value = color;
+                updateSecondaryColor(color);
+            }
+        });
+
+        document.getElementById('agent-scale').addEventListener('input', function(e) {
+            const scale = parseFloat(e.target.value);
+            document.getElementById('scale-value').textContent = scale.toFixed(1);
+            if (agent) {
+                agent.scale.set(scale * 0.01, scale * 0.01, scale * 0.01);
+            }
+        });
+
+        document.getElementById('rotation-speed').addEventListener('input', function(e) {
+            rotationSpeed = parseFloat(e.target.value);
+            document.getElementById('rotation-value').textContent = rotationSpeed.toFixed(1);
+        });
+
+        // Skill selection
+        document.querySelectorAll('.skill-tag').forEach(tag => {
+            tag.addEventListener('click', function() {
+                const skill = this.dataset.skill;
+                if (selectedSkills.has(skill)) {
+                    selectedSkills.delete(skill);
+                    this.classList.remove('selected');
+                } else {
+                    selectedSkills.add(skill);
+                    this.classList.add('selected');
+                }
+            });
+        });
+
+        function updateAgentColor(color) {
+            if (agent) {
+                agent.traverse(function(child) {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material[0].color.set(color);
+                        } else {
+                            child.material.color.set(color);
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateSecondaryColor(color) {
+            if (agent) {
+                agent.traverse(function(child) {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material) && child.material[1]) {
+                            child.material[1].color.set(color);
+                        }
+                    }
+                });
+            }
+        }
+
+        function tryAgent() {
+            const agentConfig = {
+                name: document.getElementById('agent-name').value,
+                primaryColor: document.getElementById('agent-color').value,
+                secondaryColor: document.getElementById('secondary-color').value,
+                scale: document.getElementById('agent-scale').value,
+                rotationSpeed: document.getElementById('rotation-speed').value,
+                systemPrompt: document.getElementById('system-prompt').value,
+                skills: Array.from(selectedSkills),
+                model: document.getElementById('model-select').value
+            };
+
+            console.log('Testing Agent:', agentConfig);
+            
+            // Show testing message
+            const button = document.querySelector('.try-button');
+            const originalText = button.textContent;
+            button.textContent = '⚡ Launching...';
+            button.style.background = 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
+            
+            setTimeout(() => {
+                button.textContent = '✓ Agent Ready!';
+                button.style.background = 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+                
+                // Here you would typically open a chat interface or test environment
+                alert(`Agent "${agentConfig.name}" is ready for testing!\n\nModel: ${agentConfig.model}\nSkills: ${agentConfig.skills.join(', ')}\n\nIn a full implementation, this would open the agent chat interface.`);
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 1000);
+            }, 1500);
+        }
+
+        function saveAgent() {
+            const agentConfig = {
+                name: document.getElementById('agent-name').value,
+                primaryColor: document.getElementById('agent-color').value,
+                secondaryColor: document.getElementById('secondary-color').value,
+                scale: document.getElementById('agent-scale').value,
+                rotationSpeed: document.getElementById('rotation-speed').value,
+                systemPrompt: document.getElementById('system-prompt').value,
+                skills: Array.from(selectedSkills),
+                model: document.getElementById('model-select').value
+            };
+
+            console.log('Agent Configuration Saved:', agentConfig);
+            
+            // Show success message
+            const button = document.querySelector('.save-button');
+            const originalText = button.textContent;
+            button.textContent = '✓ Saved!';
+            button.style.background = 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '';
+            }, 2000);
+        }
+
+        // Initialize the scene
+        init();
+        animate();
+    </script>
+</body>
+</html>
