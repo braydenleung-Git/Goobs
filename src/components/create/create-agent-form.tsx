@@ -39,14 +39,22 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [models, setModels] = useState<ModelOption[]>([])
   const [color, setColor] = useState(editingAgent?.modelColorHex ?? PRESET_COLORS[0])
   const [prefersImage, setPrefersImage] = useState(false)
-  const [toolProfile, setToolProfile] = useState("none")
+  const [toolProfile, setToolProfile] = useState(() => {
+    if (editingAgent) {
+      try {
+        const parsed = JSON.parse(editingAgent.toolsJson)
+        return parsed.profile || "none"
+      } catch {}
+    }
+    return "none"
+  })
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editContent, setEditContent] = useState("")
 
   useEffect(() => {
-    fetch(`/api/models?t=${Date.now()}`)
+    fetch("/api/models")
       .then((r) => r.json())
       .then((list: ModelOption[]) => {
         setModels(list)
@@ -100,11 +108,17 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
     setSaving(true)
     try {
       const filteredSkills = skills.filter((s) => s.trim().length > 0)
+      const profileToTools: Record<string, string[]> = {
+        none: [],
+        read_only: ["read_file", "list_files"],
+        read_write: ["read_file", "list_files", "write_file"],
+        full: ["read_file", "list_files", "write_file", "exec_bash"],
+      }
       const body = {
         name,
         systemPrompt,
         skillsJson: JSON.stringify(filteredSkills),
-        toolsJson: JSON.stringify({ profile: toolProfile, selectedTools: toolProfile }),
+        toolsJson: JSON.stringify({ profile: toolProfile, selectedTools: profileToTools[toolProfile] || [] }),
         defaultModel: model,
         modelColorHex: color,
         prefersImageTasks: prefersImage,
