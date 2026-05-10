@@ -47,9 +47,12 @@ export function AgentSidebar({ onSidebarChange }: Props) {
         style={{ paddingTop: "4.5rem", height: "100%", width: "20px" }}
         onMouseEnter={() => setHovered(true)}
       >
-        <div className="absolute rounded-r-lg glass flex flex-col items-center justify-center transition-all duration-200 ease-out"
+        <div
+          className={`absolute rounded-r-lg glass flex flex-col items-center justify-center transition-all duration-200 ease-out ${
+            hovered ? "opacity-0" : "opacity-100"
+          }`}
           style={{
-            top: "3rem",
+            top: "8rem",
             width: "20px",
             height: "90px",
             borderLeft: "none",
