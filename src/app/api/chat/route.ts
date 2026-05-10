@@ -47,6 +47,20 @@ export async function POST(request: NextRequest) {
 
   if (toolProfile === "none") {
     systemPrompt += `\n\nYou do not have access to any function calls or tools. Only respond with text directly.`
+  } else {
+    const toolInstructions: string[] = []
+    if (toolProfile === "read_only" || toolProfile === "read_write" || toolProfile === "full") {
+      toolInstructions.push("Use \`read_file\` to read files, \`list_files\` to see what's in your workspace")
+    }
+    if (toolProfile === "read_write" || toolProfile === "full") {
+      toolInstructions.push("Use \`write_file\` to create or overwrite files")
+    }
+    if (toolProfile === "full") {
+      toolInstructions.push("Use \`exec_bash\` to run shell commands")
+    }
+    if (toolInstructions.length > 0) {
+      systemPrompt += `\n\nYou have access to tools. ${toolInstructions.join(". ")}. When you need to perform one of these actions, call the appropriate function rather than describing what you would do. You can also use plain text to respond to the user normally.`
+    }
   }
 
   // run chat
