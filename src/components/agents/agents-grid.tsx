@@ -112,7 +112,7 @@ export function AgentsGrid({ onAgentCreated }: Props) {
 
   return (
     <div className="flex h-full flex-col p-4 animate-fade-in" style={{ paddingTop: "1rem" }}>
-      <div className="mb-4 flex items-center justify-between px-8">
+      <div className="mb-4 text-center">
         <div>
           <h2 className="font-display text-2xl font-bold text-text">Agents</h2>
           <p className="mt-1 font-body text-sm text-subtext">
