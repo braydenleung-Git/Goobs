@@ -229,10 +229,87 @@ function Markdown({ text }: { text: string }) {
   )
 }
 
+function ToolCallCard({ call }: { call: { name: string; arguments: string; output: string; stdout: string; stderr: string; exitCode?: number; files?: string[] } }) {
+  const [open, setOpen] = useState(false)
+  const args = (() => { try { return JSON.parse(call.arguments) } catch { return {} } })()
+
+  const icon = call.name === "write_file" ? "📄"
+    : call.name === "exec_bash" ? "🖥"
+    : call.name === "read_file" ? "📖"
+    : call.name === "list_files" ? "📁"
+    : "🔧"
+
+  const label = call.name === "write_file" ? `Wrote ${args.path || ""}`
+    : call.name === "exec_bash" ? `$ ${(args.command || "").slice(0, 60)}${(args.command || "").length > 60 ? "..." : ""}`
+    : call.name === "read_file" ? `Read ${args.path || ""}`
+    : call.name === "list_files" ? `Listed ${args.path || "."}`
+    : call.name
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[90%] min-w-0 rounded-xl border border-white/5 bg-white/[0.02] text-xs">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-subtext/80 hover:bg-white/5 transition-colors"
+        >
+          <span className="shrink-0">{icon}</span>
+          <span className="flex-1 truncate font-mono">{label}</span>
+          {call.name === "exec_bash" && call.exitCode !== undefined && (
+            <span className={`shrink-0 font-mono ${call.exitCode === 0 ? "text-green" : "text-red"}`}>
+              exit {call.exitCode}
+            </span>
+          )}
+          <span className="shrink-0 text-subtext/40">{open ? "▾" : "▸"}</span>
+        </button>
+        {open && (
+          <div className="border-t border-white/5 px-3 py-2 space-y-2 max-h-[400px] overflow-y-auto">
+            {call.name === "write_file" && call.files && call.files.length > 0 && (
+              <div className="flex items-center gap-2 text-blue/80">
+                <span className="shrink-0">🔗</span>
+                <code className="break-all text-[11px]">{call.files[0]}</code>
+              </div>
+            )}
+            {call.name === "exec_bash" && (
+              <>
+                <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-green/80 whitespace-pre-wrap break-all">{args.command || ""}</div>
+                {call.stdout && <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-text/80 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.stdout}</div>}
+                {call.stderr && <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-red/70 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.stderr}</div>}
+              </>
+            )}
+            {(call.name === "read_file" || call.name === "list_files") && call.output && (
+              <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-text/80 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.output}</div>
+            )}
+            {!["write_file", "exec_bash", "read_file", "list_files"].includes(call.name) && call.output && (
+              <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-text/80 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.output}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function AgentChatPanel() {
   const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation } = useRuntimeState()
+
+  interface ToolCallEntry {
+    name: string
+    arguments: string
+    output: string
+    stdout: string
+    stderr: string
+    exitCode?: number
+    files?: string[]
+  }
+
+  interface ChatEntry {
+    role: "agent" | "user"
+    text: string
+    toolCalls?: ToolCallEntry[]
+  }
+
   const [message, setMessage] = useState("")
-  const [chatLogs, setChatLogs] = useState<Record<string, Array<{ role: "agent" | "user"; text: string }>>>({})
+  const [chatLogs, setChatLogs] = useState<Record<string, ChatEntry[]>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
   const [sending, setSending] = useState(false)
   const chatSentRef = useRef(false)
@@ -362,7 +439,7 @@ function AgentChatPanel() {
         const data = await res.json()
         setChatLogs((prev) => ({
           ...prev,
-          [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)" }],
+          [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)", toolCalls: data.toolCalls }],
         }))
       }
 
@@ -444,11 +521,26 @@ function AgentChatPanel() {
               </div>
             ) : (
               chatLog.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${msg.role === "user" ? "bg-blue/20 text-blue" : "bg-white/5 text-text"}`}>
-                    {msg.role === "user" ? msg.text : <Markdown text={msg.text || "*thinking...*"} />}
+                msg.role === "user" ? (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm bg-blue/20 text-blue">{msg.text}</div>
                   </div>
-                </div>
+                ) : (
+                  <div key={i} className="flex flex-col gap-2">
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        {msg.toolCalls.map((tc, ti) => (
+                          <ToolCallCard key={ti} call={tc} />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex justify-start">
+                      <div className="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm bg-white/5 text-text">
+                        <Markdown text={msg.text || "*thinking...*"} />
+                      </div>
+                    </div>
+                  </div>
+                )
               ))
             )}
           </div>

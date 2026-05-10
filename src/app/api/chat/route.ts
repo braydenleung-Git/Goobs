@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
     let finalContent = ""
     let turnCount = 0
     const MAX_TURNS = 5
+    const toolCallsLog: Array<{ name: string; arguments: string; output: string; stdout: string; stderr: string; exitCode?: number; files?: string[] }> = []
 
     while (turnCount < MAX_TURNS) {
       const result = await runChatCompletion({
@@ -110,6 +111,16 @@ export async function POST(request: NextRequest) {
 
           const execResult = await registry.execute(tc.function.name, args)
 
+          toolCallsLog.push({
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+            output: execResult.output,
+            stdout: execResult.data?.stdout ?? "",
+            stderr: execResult.data?.stderr ?? "",
+            exitCode: execResult.data?.exitCode,
+            files: execResult.data?.files,
+          })
+
           chatMessages.push({
             role: "tool",
             tool_call_id: tc.id,
@@ -129,7 +140,7 @@ export async function POST(request: NextRequest) {
       finalContent = last?.content ?? "(no response)"
     }
 
-    return new Response(JSON.stringify({ content: finalContent }), {
+    return new Response(JSON.stringify({ content: finalContent, toolCalls: toolCallsLog }), {
       headers: { "Content-Type": "application/json" },
     })
   }
