@@ -389,10 +389,10 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
 
       {editingIndex !== null && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setEditingIndex(null)} />
+          <div className="fixed inset-0 z-50" onClick={() => setEditingIndex(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-              className="glass-strong glass-border-accent w-full max-w-lg animate-scale-in rounded-2xl overflow-hidden"
+              className="glass-strong glass-border-accent w-full max-w-lg animate-scale-in rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
@@ -439,9 +439,9 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
 
       {showSkillHint && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowSkillHint(false)} />
+          <div className="fixed inset-0 z-50" onClick={() => setShowSkillHint(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="glass-strong glass-border-accent w-full max-w-sm animate-scale-in rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="glass-strong glass-border-accent w-full max-w-sm animate-scale-in rounded-2xl p-5 shadow-2xl shadow-black/50" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start gap-3 mb-3">
                 <span className="text-xl mt-0.5">💡</span>
                 <div>
