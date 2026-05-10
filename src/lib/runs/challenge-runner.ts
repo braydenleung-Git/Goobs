@@ -71,9 +71,14 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
   const hasTools = challenge.availableTools && challenge.availableTools.length > 0
 
+  // always add skill tool awareness when agent has skills
+  if (agentSkills.length > 0) {
+    systemPrompt += `\n\nUse \`view_skills\` to see your full skill definitions and content.`
+  }
+
   if (hasTools) {
     events.push("state:typing")
-    systemPrompt += `\n\nYou have access to tools. Use \`view_skills\` to see your skill definitions. Use \`write_file\` to create files and \`exec_bash\` to run them. Check existing files with \`read_file\` and \`list_files\` before creating new ones.`
+    systemPrompt += `\n\nYou have access to additional tools. Use \`write_file\` to create files and \`exec_bash\` to run them. Check existing files with \`read_file\` and \`list_files\` before creating new ones.`
 
     const registry = new ToolRegistry()
     registry.register(createSkillsTool(input.agentId, agentSkills))
