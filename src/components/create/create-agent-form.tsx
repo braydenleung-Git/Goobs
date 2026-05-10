@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react"
 import { skillName } from "@/lib/skills/skill-name"
+import { getProgressionState } from "@/lib/progression/progression-engine"
 
 interface ModelOption {
   id: string
@@ -16,6 +17,7 @@ interface Props {
     name: string
     systemPrompt: string
     skillsJson: string
+    toolsJson: string
     defaultModel: string
     modelColorHex: string
   } | null
@@ -38,7 +40,15 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
   const [models, setModels] = useState<ModelOption[]>([])
   const [color, setColor] = useState(editingAgent?.modelColorHex ?? PRESET_COLORS[0])
   const [prefersImage, setPrefersImage] = useState(false)
-  const [toolProfile, setToolProfile] = useState("none")
+  const [toolProfile, setToolProfile] = useState(() => {
+    if (editingAgent) {
+      try {
+        const parsed = JSON.parse(editingAgent.toolsJson)
+        return parsed.profile || "none"
+      } catch {}
+    }
+    return "none"
+  })
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -49,14 +59,12 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
       .then((r) => r.json())
       .then((list: ModelOption[]) => {
         setModels(list)
-        if (list.length > 0) {
+        if (list.length > 0 && !editingAgent) {
           setModel(list[0].id)
         }
       })
-      .catch(() => {
-        setModels([{ id: "OpenCode/deepseek-v4-flash", name: "DeepSeek V4 Flash (fallback)", capabilities: ["text"] }])
-      })
-  }, [])
+      .catch(() => {})
+  }, [editingAgent])
 
   const openEditor = (index: number | null) => {
     if (index !== null) {
@@ -99,11 +107,17 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
     setSaving(true)
     try {
       const filteredSkills = skills.filter((s) => s.trim().length > 0)
+      const profileToTools: Record<string, string[]> = {
+        none: [],
+        read_only: ["read_file", "list_files"],
+        read_write: ["read_file", "list_files", "write_file"],
+        full: ["read_file", "list_files", "write_file", "exec_bash"],
+      }
       const body = {
         name,
         systemPrompt,
         skillsJson: JSON.stringify(filteredSkills),
-        toolsJson: JSON.stringify({ profile: toolProfile, selectedTools: toolProfile }),
+        toolsJson: JSON.stringify({ profile: toolProfile, selectedTools: profileToTools[toolProfile] || [] }),
         defaultModel: model,
         modelColorHex: color,
         prefersImageTasks: prefersImage,
@@ -245,6 +259,19 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
               Model
             </label>
             <div className="relative">
+              {models.length === 0 ? (
+                <input
+                  className="w-full rounded-xl px-3 py-2 text-sm transition-all"
+                  style={{
+                    background: "rgba(49, 50, 68, 0.4)",
+                    border: "1px solid rgba(205, 214, 244, 0.08)",
+                    color: "#cdd6f4",
+                  }}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Enter model ID..."
+                />
+              ) : (
               <select
                 className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all"
                 style={{
@@ -261,6 +288,7 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
                   </option>
                 ))}
               </select>
+              )}
               <svg
                 className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-subtext/60"
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
@@ -312,7 +340,8 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
           </label>
           <div className="relative">
             <select
-              className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all"
+              disabled={getProgressionState().tier < 2}
+              className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
                 background: "rgba(49, 50, 68, 0.4)",
                 border: "1px solid rgba(205, 214, 244, 0.08)",
@@ -333,7 +362,9 @@ export function CreateAgentForm({ onAgentCreated, editingAgent, onUpdated }: Pro
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <p className="mt-1 font-body text-[10px] text-subtext/40">Unlocked through progression (Tier 2+)</p>
+          <p className="mt-1 font-body text-[10px] text-subtext/40">
+            {getProgressionState().tier < 2 ? "Unlocks after completing all Tier 1 challenges" : "Select tool permissions for this agent"}
+          </p>
         </div>
 
         <button

@@ -23,7 +23,7 @@ const WorkshopScene = dynamic(
 )
 
 function WorkshopContent() {
-  const { spawnAgent, routeAgent, setAgentAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview } = useRuntimeState()
+  const { routeAgent, setAgentAnimation, updateAgentMeta, requestDrop, setDropPreview, clearDropPreview } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
   const [activeTab, setActiveTab] = useState<TabId>("workshop")
   const [showConfig, setShowConfig] = useState(false)
@@ -58,11 +58,10 @@ function WorkshopContent() {
   }, [clearDropPreview])
 
   const handleAgentCreated = useCallback((agentId: string, name: string, color: string) => {
-    spawnAgent(agentId)
     updateAgentMeta(agentId, { name, color })
     setPreviewColor(color)
     setTimeout(() => setActiveTab("workshop"), 800)
-  }, [spawnAgent, updateAgentMeta])
+  }, [updateAgentMeta])
 
   const handleRunStart = useCallback((agentId: string, workstationTarget: string) => {
     routeAgent(agentId, workstationTarget)
@@ -97,6 +96,13 @@ function WorkshopContent() {
     const writeCalls = result.toolCalls?.filter((tc) => tc.name === "write_file" && tc.success) ?? []
     for (let i = 0; i < writeCalls.length; i++) {
       ;(window as any).__goobsProgressionEvent?.("tool_write_file")
+    }
+    const bashCalls = result.toolCalls?.filter((tc) => tc.name === "exec_bash" && tc.success) ?? []
+    for (let i = 0; i < bashCalls.length; i++) {
+      ;(window as any).__goobsProgressionEvent?.("tool_exec_bash")
+    }
+    if (writeCalls.length > 0 && bashCalls.length > 0) {
+      ;(window as any).__goobsProgressionEvent?.("tool_build_script")
     }
     progressRef.current?.refresh()
   }, [setAgentAnimation])
@@ -133,7 +139,6 @@ function WorkshopContent() {
             </div>
 
             <AgentSidebar onSidebarChange={setSidebarOpen} />
-            <AgentChatPanel />
 
             {showConfig && (
               <ConfigModal onClose={() => setShowConfig(false)} />
@@ -150,6 +155,11 @@ function WorkshopContent() {
         ) : (
           <AgentsGrid onAgentCreated={handleAgentCreated} />
         )}
+
+        {/* Keep AgentChatPanel always mounted so chat logs persist across tab switches */}
+        <div className={activeTab !== "workshop" ? "hidden" : ""}>
+          <AgentChatPanel />
+        </div>
       </div>
       {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} sidebarOpen={sidebarOpen} />}
     </div>
@@ -230,10 +240,87 @@ function Markdown({ text }: { text: string }) {
   )
 }
 
+function ToolCallCard({ call }: { call: { name: string; arguments: string; output: string; stdout: string; stderr: string; exitCode?: number; files?: string[] } }) {
+  const [open, setOpen] = useState(false)
+  const args = (() => { try { return JSON.parse(call.arguments) } catch { return {} } })()
+
+  const icon = call.name === "write_file" ? "📄"
+    : call.name === "exec_bash" ? "🖥"
+    : call.name === "read_file" ? "📖"
+    : call.name === "list_files" ? "📁"
+    : "🔧"
+
+  const label = call.name === "write_file" ? `Wrote ${args.path || ""}`
+    : call.name === "exec_bash" ? `$ ${(args.command || "").slice(0, 60)}${(args.command || "").length > 60 ? "..." : ""}`
+    : call.name === "read_file" ? `Read ${args.path || ""}`
+    : call.name === "list_files" ? `Listed ${args.path || "."}`
+    : call.name
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[90%] min-w-0 rounded-xl border border-white/5 bg-white/[0.02] text-xs">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-subtext/80 hover:bg-white/5 transition-colors"
+        >
+          <span className="shrink-0">{icon}</span>
+          <span className="flex-1 truncate font-mono">{label}</span>
+          {call.name === "exec_bash" && call.exitCode !== undefined && (
+            <span className={`shrink-0 font-mono ${call.exitCode === 0 ? "text-green" : "text-red"}`}>
+              exit {call.exitCode}
+            </span>
+          )}
+          <span className="shrink-0 text-subtext/40">{open ? "▾" : "▸"}</span>
+        </button>
+        {open && (
+          <div className="border-t border-white/5 px-3 py-2 space-y-2 max-h-[400px] overflow-y-auto">
+            {call.name === "write_file" && call.files && call.files.length > 0 && (
+              <div className="flex items-center gap-2 text-blue/80">
+                <span className="shrink-0">🔗</span>
+                <code className="break-all text-[11px]">{call.files[0]}</code>
+              </div>
+            )}
+            {call.name === "exec_bash" && (
+              <>
+                <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-green/80 whitespace-pre-wrap break-all">{args.command || ""}</div>
+                {call.stdout && <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-text/80 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.stdout}</div>}
+                {call.stderr && <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-red/70 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.stderr}</div>}
+              </>
+            )}
+            {(call.name === "read_file" || call.name === "list_files") && call.output && (
+              <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-text/80 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.output}</div>
+            )}
+            {!["write_file", "exec_bash", "read_file", "list_files"].includes(call.name) && call.output && (
+              <div className="rounded bg-black/40 p-2 font-mono text-[11px] text-text/80 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">{call.output}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function AgentChatPanel() {
   const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation } = useRuntimeState()
+
+  interface ToolCallEntry {
+    name: string
+    arguments: string
+    output: string
+    stdout: string
+    stderr: string
+    exitCode?: number
+    files?: string[]
+  }
+
+  interface ChatEntry {
+    role: "agent" | "user"
+    text: string
+    toolCalls?: ToolCallEntry[]
+  }
+
   const [message, setMessage] = useState("")
-  const [chatLogs, setChatLogs] = useState<Record<string, Array<{ role: "agent" | "user"; text: string }>>>({})
+  const [chatLogs, setChatLogs] = useState<Record<string, ChatEntry[]>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
   const [sending, setSending] = useState(false)
   const chatSentRef = useRef(false)
@@ -242,10 +329,15 @@ function AgentChatPanel() {
 
   useEffect(() => {
     if (selectedAgentId) {
-      fetch(`/api/agents?id=${selectedAgentId}`)
-        .then((r) => r.json())
-        .then((a) => setProfile(a))
-        .catch(() => setProfile(null))
+      const load = () => {
+        fetch(`/api/agents?id=${selectedAgentId}`)
+          .then((r) => r.json())
+          .then((a) => setProfile(a))
+          .catch(() => setProfile(null))
+      }
+      load()
+      const interval = setInterval(load, 4000)
+      return () => clearInterval(interval)
     } else {
       setProfile(null)
     }
@@ -283,23 +375,31 @@ function AgentChatPanel() {
     setAgentAnimation(selectedAgentId, "thinking")
 
     try {
+      const mappedMessages = currentLog.map((m) => ({
+        role: m.role === "agent" ? "assistant" : m.role,
+        content: m.text || "",
+      }))
+      mappedMessages.push({ role: "user" as const, content: userMsg })
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentId: selectedAgentId,
-          messages: [...currentLog, { role: "user", content: userMsg }],
+          messages: mappedMessages,
         }),
       })
 
-      if (!res.ok || !res.body) {
-        throw new Error("Response error")
-      }
+      if (!res.ok) throw new Error("Response error")
 
-      const reader = res.body.getReader()
+      const contentType = res.headers.get("content-type") || ""
+
+      // ---- SSE streaming (both tools and no-tools paths) ----
+      const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ""
       let fullText = ""
+      const toolCallsAcc: Array<{ name: string }> = []
 
       setChatLogs((prev) => ({
         ...prev,
@@ -321,25 +421,75 @@ function AgentChatPanel() {
           if (data === "[DONE]") continue
           try {
             const parsed = JSON.parse(data)
+
+            // custom tool-path events
+            if (parsed.type === "text") {
+              fullText += parsed.content
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            if (parsed.type === "tool_call") {
+              toolCallsAcc.push({ name: parsed.name })
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") {
+                  const calls = last.toolCalls ? [...last.toolCalls] : []
+                  calls.push({ name: parsed.name, arguments: parsed.arguments, output: "", stdout: "", stderr: "", files: undefined })
+                  msgs[msgs.length - 1] = { ...last, toolCalls: calls }
+                }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            if (parsed.type === "tool_result") {
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent" && last.toolCalls) {
+                  const calls = [...last.toolCalls]
+                  const idx = calls.length - 1
+                  if (idx >= 0) {
+                    calls[idx] = { ...calls[idx], output: parsed.output, stdout: parsed.stdout, stderr: parsed.stderr, exitCode: parsed.exitCode, files: parsed.files }
+                  }
+                  msgs[msgs.length - 1] = { ...last, toolCalls: calls }
+                }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            if (parsed.type === "done") {
+              if (!fullText) fullText = parsed.content || "(no response)"
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+              continue
+            }
+
+            // standard OpenAI SSE (no-tools path)
             const delta = parsed.choices?.[0]?.delta?.content
             if (delta) {
               fullText += delta
               setChatLogs((prev) => {
                 const msgs = [...(prev[selectedAgentId] ?? [])]
                 const last = msgs[msgs.length - 1]
-                if (last && last.role === "agent") {
-                  msgs[msgs.length - 1] = { ...last, text: fullText }
-                }
+                if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
                 return { ...prev, [selectedAgentId]: msgs }
               })
             }
           } catch {}
         }
-      }
-
-      if (!chatSentRef.current) {
-        chatSentRef.current = true
-        ;(window as any).__goobsProgressionEvent?.("chat_sent")
       }
 
       if (!fullText) {
@@ -349,6 +499,19 @@ function AgentChatPanel() {
           return { ...prev, [selectedAgentId]: msgs }
         })
       }
+
+      if (!chatSentRef.current) {
+        chatSentRef.current = true
+        ;(window as any).__goobsProgressionEvent?.("chat_sent")
+      }
+
+      // fire progression events for tool calls from chat
+      const writeCount = toolCallsAcc.filter((tc) => tc.name === "write_file").length
+      const bashCount = toolCallsAcc.filter((tc) => tc.name === "exec_bash").length
+      for (let i = 0; i < writeCount; i++) (window as any).__goobsProgressionEvent?.("tool_write_file")
+      for (let i = 0; i < bashCount; i++) (window as any).__goobsProgressionEvent?.("tool_exec_bash")
+      const buildPairs = Math.min(writeCount, bashCount)
+      for (let i = 0; i < buildPairs; i++) (window as any).__goobsProgressionEvent?.("tool_build_script")
     } catch {
       setChatLogs((prev) => ({
         ...prev,
@@ -423,11 +586,26 @@ function AgentChatPanel() {
               </div>
             ) : (
               chatLog.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${msg.role === "user" ? "bg-blue/20 text-blue" : "bg-white/5 text-text"}`}>
-                    {msg.role === "user" ? msg.text : <Markdown text={msg.text || "*thinking...*"} />}
+                msg.role === "user" ? (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm bg-blue/20 text-blue">{msg.text}</div>
                   </div>
-                </div>
+                ) : (
+                  <div key={i} className="flex flex-col gap-2">
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        {msg.toolCalls.map((tc, ti) => (
+                          <ToolCallCard key={ti} call={tc} />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex justify-start">
+                      <div className="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm bg-white/5 text-text">
+                        <Markdown text={msg.text || "*thinking...*"} />
+                      </div>
+                    </div>
+                  </div>
+                )
               ))
             )}
           </div>

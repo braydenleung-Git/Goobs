@@ -16,6 +16,7 @@ interface AgentSummary {
   modelColorHex: string
   defaultModel: string
   skillsJson: string
+  toolsJson: string
   systemPrompt: string
   isPrebuilt: boolean
 }

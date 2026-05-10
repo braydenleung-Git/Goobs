@@ -3,6 +3,7 @@ import { getChallengeBySlug } from "@/lib/challenges/catalog"
 import { runChatCompletion } from "@/lib/llm/openai-compatible-client"
 import { runAgent } from "@/lib/runtime/agent-runtime"
 import { ToolRegistry } from "@/lib/runtime/tool-registry"
+import { createSkillsTool } from "@/lib/runtime/tools/skills"
 import { createFilesystemTools } from "@/lib/runtime/tools/filesystem"
 import { createBashTool } from "@/lib/runtime/tools/bash"
 import { evaluateRun } from "@/lib/eval/evaluation-engine"
@@ -48,12 +49,23 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
   let systemPrompt = challenge.systemPromptTemplate
 
+  const agentPrompt = agent.systemPrompt?.trim()
+  if (agentPrompt) {
+    systemPrompt = agentPrompt + "\n\n---\n\n" + systemPrompt
+  }
+
   let agentSkills: string[] = []
   try {
     agentSkills = JSON.parse(agent.skillsJson || "[]")
   } catch {}
   if (agentSkills.length > 0) {
-    systemPrompt += `\n\nAvailable skills: ${agentSkills.join(", ")}. Invoke these skills only when relevant to the task.`
+    const blocks = agentSkills.map((s, i) => {
+      const trimmed = s.trim()
+      const firstLine = trimmed.split("\n")[0] || ""
+      const title = firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || `Skill ${i + 1}`
+      return `### ${title}\n\n${trimmed}`
+    })
+    systemPrompt += `\n\nYou have the following skills:\n\n${blocks.join("\n\n")}`
   }
 
   const runId = crypto.randomUUID()
@@ -67,8 +79,10 @@ export async function runChallenge(input: RunInput): Promise<RunResult> {
 
   if (hasTools) {
     events.push("state:typing")
+    systemPrompt += `\n\nDuring this task you can use tools. Use \`write_file\` to create files, \`exec_bash\` to run commands, \`read_file\` to read existing files, and \`list_files\` to see what's in your workspace.`
 
     const registry = new ToolRegistry()
+    registry.register(createSkillsTool(input.agentId, agentSkills))
     registry.register(createFilesystemTools(input.agentId, runId))
     registry.register(createBashTool(input.agentId))
 

@@ -2,7 +2,7 @@ import type { AnimationState } from "@/components/scene/runtime-state-adapter"
 
 export type Tier = 1 | 2 | 3
 
-export type ProgressionEventType = "agent_created" | "skill_added" | "agent_deployed" | "tool_write_file" | "chat_sent"
+export type ProgressionEventType = "agent_created" | "skill_added" | "agent_deployed" | "tool_write_file" | "tool_exec_bash" | "tool_build_script" | "chat_sent"
 
 export interface ProgressionEvent {
   type: ProgressionEventType
@@ -22,8 +22,10 @@ export interface ChallengeDef {
 }
 
 export interface Counters {
-  deployedAgentIds: string[]
+  deployCount: number
   writeFileCount: number
+  bashExecCount: number
+  buildScriptCount: number
 }
 
 export interface Unlocks {
@@ -49,18 +51,21 @@ export interface ProgressionDelta {
 }
 
 const STORAGE_KEY = "goobs-progression"
-const TIER_1_XP_MIN = 90
+const TIER_1_XP_MIN = 140
 
 export const CHALLENGES: ChallengeDef[] = [
   { id: "create-agent", title: "Create Agent", description: "Create your first agent", tier: 1, xpReward: 20, trigger: "event", eventType: "agent_created" },
   { id: "add-skill", title: "Add Skill", description: "Add a skill to your agent", tier: 1, xpReward: 30, trigger: "event", eventType: "skill_added" },
   { id: "deploy-workshop", title: "Deploy to Workshop", description: "Drag your agent into the scene", tier: 1, xpReward: 40, trigger: "event", eventType: "agent_deployed" },
-  { id: "field-two-agents", title: "Field Two Agents", description: "Deploy 2 unique agents", tier: 2, xpReward: 60, trigger: "counter", counterCheck: (c) => c.deployedAgentIds.length >= 2, unlocks: ["filesystem"] },
-  { id: "write-two-files", title: "Write Two Files", description: "Write 2 files using agent tools", tier: 2, xpReward: 100, trigger: "counter", counterCheck: (c) => c.writeFileCount >= 2, unlocks: ["bash"] },
+  { id: "first-chat", title: "First Chat", description: "Send a message to your agent", tier: 1, xpReward: 50, trigger: "event", eventType: "chat_sent" },
+  { id: "field-two-agents", title: "Field Two Agents", description: "Deploy 2 agents", tier: 2, xpReward: 60, trigger: "counter", counterCheck: (c) => c.deployCount >= 2, unlocks: ["filesystem"] },
+  { id: "write-a-file", title: "Write a File", description: "Write 1 file using agent tools", tier: 2, xpReward: 50, trigger: "counter", counterCheck: (c) => c.writeFileCount >= 1 },
+  { id: "exec-bash", title: "Execute Bash Command", description: "Run 1 bash command using agent tools", tier: 2, xpReward: 100, trigger: "counter", counterCheck: (c) => c.bashExecCount >= 1, unlocks: ["bash"] },
+  { id: "build-script", title: "Build a Script", description: "Write and execute a script 3 times using agent tools", tier: 3, xpReward: 200, trigger: "counter", counterCheck: (c) => c.buildScriptCount >= 3 },
 ]
 
 function defaultState(): ProgressionState {
-  return { tier: 1, xp: 0, completedChallenges: [], counters: { deployedAgentIds: [], writeFileCount: 0 }, unlocks: { filesystem: false, bash: false } }
+  return { tier: 1, xp: 0, completedChallenges: [], counters: { deployCount: 0, writeFileCount: 0, bashExecCount: 0, buildScriptCount: 0 }, unlocks: { filesystem: false, bash: false } }
 }
 
 export function getProgressionState(): ProgressionState {
@@ -93,6 +98,11 @@ function checkTier2Promotion(state: ProgressionState): boolean {
   return t1Challenges.every((c) => state.completedChallenges.includes(c.id))
 }
 
+function checkTier3Promotion(state: ProgressionState): boolean {
+  const t2Challenges = CHALLENGES.filter((c) => c.tier === 2)
+  return t2Challenges.every((c) => state.completedChallenges.includes(c.id))
+}
+
 function checkUnlocks(state: ProgressionState): Unlocks {
   let filesystem = state.unlocks.filesystem
   let bash = state.unlocks.bash
@@ -109,13 +119,17 @@ export function dispatchProgressionEvent(event: ProgressionEvent): ProgressionDe
   const delta: ProgressionDelta = { newChallenges: [], xpGained: 0, newUnlocks: [], tierChanged: false, newTier: state.tier }
 
   // update counters
-  if (event.type === "agent_deployed" && event.agentId) {
-    if (!state.counters.deployedAgentIds.includes(event.agentId)) {
-      state.counters.deployedAgentIds.push(event.agentId)
-    }
+  if (event.type === "agent_deployed") {
+    state.counters.deployCount += 1
   }
   if (event.type === "tool_write_file") {
     state.counters.writeFileCount += 1
+  }
+  if (event.type === "tool_exec_bash") {
+    state.counters.bashExecCount += 1
+  }
+  if (event.type === "tool_build_script") {
+    state.counters.buildScriptCount += 1
   }
 
   // re-check all challenges
@@ -169,17 +183,44 @@ export function dispatchProgressionEvent(event: ProgressionEvent): ProgressionDe
 
     const finalUnlocks = checkUnlocks(state)
     state.unlocks = finalUnlocks
-    if (finalUnlocks.bash && state.tier === 2) {
+    if (checkTier3Promotion(state) && state.tier === 2) {
       state.tier = 3
+      delta.tierChanged = true
       delta.newTier = 3
+
+      // re-check tier 3 challenges on promotion
+      for (const challenge of CHALLENGES) {
+        if (state.completedChallenges.includes(challenge.id)) continue
+        if (challenge.tier !== 3) continue
+        if (challenge.trigger === "counter" && challenge.counterCheck?.(state.counters)) {
+          state.completedChallenges.push(challenge.id)
+          state.xp += challenge.xpReward
+          delta.newChallenges.push(challenge.id)
+          delta.xpGained += challenge.xpReward
+          if (challenge.unlocks) delta.newUnlocks.push(...challenge.unlocks)
+        }
+      }
     }
   }
 
-  // check tier 3 if bash unlocked
-  if (state.unlocks.bash && state.tier === 2) {
+  // promote to tier 3 when all tier 2 challenges done
+  if (checkTier3Promotion(state) && state.tier === 2) {
     state.tier = 3
     delta.tierChanged = true
     delta.newTier = 3
+
+    // re-check tier 3 challenges on promotion
+    for (const challenge of CHALLENGES) {
+      if (state.completedChallenges.includes(challenge.id)) continue
+      if (challenge.tier !== 3) continue
+      if (challenge.trigger === "counter" && challenge.counterCheck?.(state.counters)) {
+        state.completedChallenges.push(challenge.id)
+        state.xp += challenge.xpReward
+        delta.newChallenges.push(challenge.id)
+        delta.xpGained += challenge.xpReward
+        if (challenge.unlocks) delta.newUnlocks.push(...challenge.unlocks)
+      }
+    }
   }
 
   saveState(state)

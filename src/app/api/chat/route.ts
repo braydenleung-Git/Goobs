@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server"
 import { prisma } from "@/lib/db/prisma"
 import { getProviderRuntimeConfig } from "@/lib/provider/provider-config-service"
+import { ToolRegistry } from "@/lib/runtime/tool-registry"
+import { createFilesystemTools } from "@/lib/runtime/tools/filesystem"
+import { createBashTool } from "@/lib/runtime/tools/bash"
+import { runChatCompletion } from "@/lib/llm/openai-compatible-client"
 
 export async function POST(request: NextRequest) {
   let agentId: string, messages: Array<{ role: string; content: string }>
@@ -25,24 +29,143 @@ export async function POST(request: NextRequest) {
   let skills: string[] = []
   try { skills = JSON.parse(agent.skillsJson || "[]") } catch {}
   if (skills.length > 0) {
-    const names = skills.map((s) => {
+    const skillBlocks = skills.map((s, i) => {
       const trimmed = s.trim()
-      if (trimmed.startsWith("---")) {
-        const end = trimmed.indexOf("---", 3)
-        if (end !== -1) {
-          const m = trimmed.slice(3, end).match(/^name:\s*(.+)$/m)
-          if (m) return m[1].trim()
-        }
-      }
-      return trimmed.split("\n")[0].replace(/^#\s*/, "") || "Untitled Skill"
+      const firstLine = trimmed.split("\n")[0] || ""
+      const title = firstLine.replace(/^#\s*/, "").replace(/^["']|["']$/g, "") || `Skill ${i + 1}`
+      return `### ${title}\n\n${trimmed}`
     })
-    systemPrompt += `\n\nAvailable skills: ${names.join(", ")}. Use these skills only when relevant.`
+    systemPrompt += `\n\nYou have the following skills:\n\n${skillBlocks.join("\n\n")}`
   }
 
+  // sanitize messages for strict providers (DeepSeek requires content field on every message)
+  messages = messages.map((m) => ({
+    ...m,
+    content: m.content || "",
+  }))
+
+  // check tool profile
+  let toolProfile = "none"
+  try {
+    const parsed = JSON.parse(agent.toolsJson || "{}")
+    toolProfile = parsed.profile || "none"
+  } catch {}
+
+  if (toolProfile === "none") {
+    systemPrompt += `\n\nYou do not have access to any function calls or tools. Only respond with text directly.`
+  } else {
+    const toolInstructions: string[] = []
+    if (toolProfile === "read_only" || toolProfile === "read_write" || toolProfile === "full") {
+      toolInstructions.push("Use \`read_file\` to read files, \`list_files\` to see what's in your workspace")
+    }
+    if (toolProfile === "read_write" || toolProfile === "full") {
+      toolInstructions.push("Use \`write_file\` to create or overwrite files")
+    }
+    if (toolProfile === "full") {
+      toolInstructions.push("Use \`exec_bash\` to run shell commands")
+    }
+    if (toolInstructions.length > 0) {
+      systemPrompt += `\n\nYou have access to tools. ${toolInstructions.join(". ")}. When you need to perform one of these actions, call the appropriate function rather than describing what you would do. You can also use plain text to respond to the user normally.`
+    }
+  }
+
+  // run chat
   const { baseUrl, apiKey } = await getProviderRuntimeConfig()
   const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`
 
-  const body: Record<string, unknown> = {
+  if (toolProfile !== "none") {
+    // ---- tool-enabled chat (streaming, multi-turn) ----
+    const registry = new ToolRegistry()
+    registry.register(createFilesystemTools(agentId, `chat-${agentId}`))
+    registry.register(createBashTool(agentId))
+    const toolDefinitions = registry.getDefinitions()
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const enc = (s: string) => controller.enqueue(new TextEncoder().encode(s))
+
+        const chatMessages: Array<any> = [...messages]
+        let finalContent = ""
+        let turnCount = 0
+        const MAX_TURNS = 5
+
+        while (turnCount < MAX_TURNS) {
+          const result = await runChatCompletion({
+            model: agent.defaultModel,
+            systemPrompt,
+            messages: chatMessages as any,
+            tools: toolDefinitions,
+          })
+
+          turnCount++
+
+          // stream assistant text if present
+          if (result.content) {
+            enc(`data: ${JSON.stringify({ type: "text", content: result.content })}\n\n`)
+          }
+
+          if (result.toolCalls && result.toolCalls.length > 0) {
+            chatMessages.push({
+              role: "assistant",
+              content: result.content || null,
+              tool_calls: result.toolCalls,
+            })
+
+            for (const tc of result.toolCalls) {
+              let args: Record<string, unknown> = {}
+              try { args = JSON.parse(tc.function.arguments) } catch {}
+
+              enc(`data: ${JSON.stringify({ type: "tool_call", name: tc.function.name, arguments: tc.function.arguments })}\n\n`)
+
+              const execResult = await registry.execute(tc.function.name, args)
+
+              enc(`data: ${JSON.stringify({
+                type: "tool_result",
+                name: tc.function.name,
+                output: execResult.output,
+                stdout: execResult.data?.stdout ?? "",
+                stderr: execResult.data?.stderr ?? "",
+                exitCode: execResult.data?.exitCode,
+                files: execResult.data?.files,
+              })}\n\n`)
+
+              chatMessages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: execResult.output,
+              })
+            }
+          } else {
+            finalContent = result.content
+            break
+          }
+        }
+
+        if (!finalContent) {
+          const last = [...chatMessages].reverse().find(
+            (m) => m.role === "assistant" && m.content && typeof m.content === "string"
+          )
+          finalContent = last?.content ?? "(no response)"
+        }
+
+        enc(`data: ${JSON.stringify({ type: "done", content: finalContent })}\n\n`)
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    })
+  }
+
+  // ---- no-tools chat (streaming) ----
+  const requestBody: Record<string, unknown> = {
     model: agent.defaultModel,
     messages: [
       { role: "system", content: systemPrompt },
@@ -51,17 +174,14 @@ export async function POST(request: NextRequest) {
     stream: true,
   }
   if (/deepseek/i.test(agent.defaultModel)) {
-    body.thinking = { type: "disabled" }
+    requestBody.thinking = { type: "disabled" }
   }
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`
 
   try {
     const provider = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(60000),
     })
 
@@ -73,10 +193,7 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         const reader = provider.body?.getReader()
-        if (!reader) {
-          controller.close()
-          return
-        }
+        if (!reader) { controller.close(); return }
         const decoder = new TextDecoder()
         let buffer = ""
         try {
@@ -92,16 +209,13 @@ export async function POST(request: NextRequest) {
               const data = trimmed.slice(6)
               if (data === "[DONE]") {
                 controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
-                controller.close()
-                return
+                controller.close(); return
               }
               controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`))
             }
           }
         } catch (e) {
-          controller.enqueue(
-            new TextEncoder().encode(`data: {"error": "${String(e)}"}\n\n`),
-          )
+          controller.enqueue(new TextEncoder().encode(`data: {"error": "${String(e)}"}\n\n`))
         }
         controller.close()
       },

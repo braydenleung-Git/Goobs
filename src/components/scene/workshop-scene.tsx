@@ -11,17 +11,19 @@ const SPAWN_DURATION = 400
 
 function AgentCharacter({
   agentId,
+  instanceId,
   position,
 }: {
   agentId: string
+  instanceId: string
   position: [number, number, number]
 }) {
-  const { agents, agentMeta, selectAgent, selectedAgentId, setAgentAnimation } = useRuntimeState()
+  const { agents, agentMeta, selectAgent, selectedInstanceId, setAgentAnimation } = useRuntimeState()
   const groupRef = useRef<THREE.Group>(null)
-  const agent = agents.find((a) => a.agentId === agentId)
+  const agent = agents.find((a) => a.instanceId === instanceId)
   const meta = agentMeta[agentId]
   const state = agent?.animationState ?? "idle"
-  const isSelected = selectedAgentId === agentId
+  const isSelected = selectedInstanceId === instanceId
   const target = agent?.targetPosition
   const entryRef = useRef<number | null>(null)
 
@@ -65,8 +67,8 @@ function AgentCharacter({
 
   const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    selectAgent(agentId)
-  }, [agentId, selectAgent])
+    selectAgent(instanceId)
+  }, [instanceId, selectAgent])
 
   return (
     <group ref={groupRef} position={[position[0], 0, position[2]]}>
@@ -323,8 +325,9 @@ export function WorkshopScene() {
 
       {agents.map((a) => (
         <AgentCharacter
-          key={a.agentId}
+          key={a.instanceId}
           agentId={a.agentId}
+          instanceId={a.instanceId}
           position={a.position}
         />
       ))}

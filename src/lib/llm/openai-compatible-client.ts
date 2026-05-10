@@ -27,8 +27,6 @@ export interface ChatRunOutput {
   toolCalls?: ToolCall[]
 }
 
-const FALLBACK_MODEL = "OpenCode/deepseek-v4-flash"
-
 async function fetchWithBase(path: string, init?: RequestInit): Promise<Response> {
   const { baseUrl, apiKey } = await getProviderRuntimeConfig()
   const url = `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`
@@ -38,22 +36,16 @@ async function fetchWithBase(path: string, init?: RequestInit): Promise<Response
 }
 
 export async function listModels(): Promise<ModelInfo[]> {
-  try {
-    const res = await fetchWithBase("models")
-    if (!res.ok) throw new Error(`Model fetch returned ${res.status}`)
-    const body = await res.json()
-    const models: ModelInfo[] = (body.data || body || []).map((m: any) => ({
-      id: m.id || m.name || "unknown",
-      name: m.name || m.id || "unknown",
-      capabilities: [],
-    }))
-    if (models.length === 0) throw new Error("Empty model list")
-    return models
-  } catch {
-    return [
-      { id: FALLBACK_MODEL, name: "DeepSeek V4 Flash (fallback)", capabilities: ["text"] },
-    ]
-  }
+  const res = await fetchWithBase("models", { cache: "no-store" })
+  if (!res.ok) throw new Error(`Model fetch returned ${res.status}: ${await res.text()}`)
+  const body = await res.json()
+  const models: ModelInfo[] = (body.data || body || []).map((m: any) => ({
+    id: m.id || m.name || "unknown",
+    name: m.name || m.id || "unknown",
+    capabilities: [],
+  }))
+  if (models.length === 0) throw new Error("Empty model list")
+  return models
 }
 
 export async function runChatCompletion(input: ChatRunInput): Promise<ChatRunOutput> {
