@@ -20,6 +20,14 @@ export default function WorkshopPage() {
           <h1 className="text-lg font-bold tracking-tight">
             Goobs <span className="text-xs font-normal text-gray-500">The Agent Workshop</span>
           </h1>
+          <nav className="flex gap-4">
+            <a 
+              href="/agent-builder"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              Build New Agent
+            </a>
+          </nav>
         </header>
 
         <div className="flex flex-1 overflow-hidden">
