@@ -1,222 +1,181 @@
-# Goobs Demo Walkthrough — Gamification Track
+# Goobs Demo Walkthrough
 
-> A 5-minute live demo with progression, 2 agents, skills, and challenges.
+> 5-minute live demo covering the full core loop: create → deploy → chat → level up
 
 ---
 
-## Setup (Before Demo)
+## Setup
 
 ```bash
-npm install
-npx prisma db push
-npm run dev
+npm install && npx prisma db push && npm run dev
 ```
 
-Open `http://localhost:3000`. Configure an LLM provider (gear icon → set base URL + API key) so the agent chat and challenge runner work.
+Open `http://localhost:3000`. Set up an LLM provider (gear icon → base URL + API key) before you start.
 
 ---
 
-## The Demo Script
+## Script
 
-### Phase 1: Launch & Context (0:00–0:30)
+### 1. Launch (0:00–0:20)
 
-1. **Refresh the page** — the Launch Screen appears with the rainbow "goobs" title
-2. Click **"Get Started"** — this resets everything and seeds CodeBot + PromptWizard
-3. **Intro Cards** pop up automatically explaining Agents, Skills, Tools, Challenges
-4. Click **"Got it!"**
-5. Say: *"Goobs turns AI agent concepts into a game. Watch the bottom-left — that's the challenge dock. It tracks your progression through 8 challenges across 3 tiers."*
+Hit the page. Rainbow "goobs" title with animated gradient + subtitle. Click **"Get Started"** — this POSTs to `/api/demo/reset`, wiping DB + sessionStorage, then seeds 2 prebuilt agents (CodeBot, PromptWizard).
 
-### Phase 2: Create Agent 1 (0:30–1:15)
+**Say:** *"Goobs teaches AI agents through play. You create chibi characters, give them skills and tools, chat with them, and watch them work in a living 3D workshop. A progression system guides you from basic concepts to advanced tool use."*
 
-1. Click **"Create"** tab in the top nav
-2. Name: **"PyBoi"**
-3. System prompt: *"You are a Python expert who writes clean, well-documented code."*
-4. Click **"+ Add Skill"** — paste in a markdown skill block:
+### 2. Intro Cards (0:20–0:35)
+
+Four cards pop up automatically: **Agents, Skills, Tools, Challenges**. Each explains one concept. Click **"Got it!"**
+
+**Say:** *"Quick primer: Agents are chibi characters you create. Skills are markdown knowledge blocks. Tools let agents act — read/write files, run bash. Challenges teach you step by step."*
+
+### 3. Create Agent 1 with a Skill (0:35–1:15)
+
+Switch to the **"Create"** tab. Fill in:
+
+- **Name:** `PyBoi`
+- **System prompt:** `"You are a Python expert who writes clean, well-documented code."`
+- **Skills:** Click "+ Add Skill" → paste markdown:
 
 ```markdown
 # Python
 Python is a high-level, interpreted programming language.
-Key features: dynamic typing, extensive standard library,
-third-party packages via pip. Use `def` for functions,
-`class` for objects, `import` for modules.
+Use `def` for functions, `class` for objects, `import` for modules.
 ```
 
-5. Click **"Save Skill"**
-6. Note the **"Skills" badge** on the sidebar shows the skill name
-7. Pick a color (skin, shirt, pants)
-8. Click **"Create Agent"**
+  → **Save Skill** (fires `skill_added` progression event)
 
-👉 **XP toast fires:** "+20 XP — Create Agent"
-👉 **Challenge dock updates:** 1/8 complete
+- Pick skin/shirt/pants colors
+- Click **"Create Agent"** (fires `agent_created` → +20 XP)
 
-### Phase 3: Create Agent 2 (1:15–1:45)
+👉 Toast: **"Create Agent · +20 XP"** — challenge dock updates to 1/8
 
-1. Click **"Create"** tab again
-2. Name: **"BashBuddy"**
-3. System prompt: *"You are a Linux systems expert. You write shell scripts and automate tasks."*
-4. Add a skill:
+**Say:** *"Each agent has a system prompt, markdown skills you write yourself, and a 3D character you customize. Skills teach the agent what it needs to know."*
+
+### 4. Create Agent 2 (1:15–1:40)
+
+Switch to "Create" tab again:
+
+- **Name:** `BashBuddy`
+- **System prompt:** `"You are a Linux expert. You write shell scripts and automate tasks."`
+- **Skill:**
 
 ```markdown
 # Shell Scripting
-Bash scripting for Linux. Use `#!/bin/bash` shebang.
+Bash scripting for Linux. Shebang: `#!/bin/bash`.
 Variables: `$VAR`. Conditionals: `if []; then; fi`.
-Loops: `for i in list; do; done`. Functions: `func() {}`.
 ```
 
-5. Pick different colors
-6. Click **"Create Agent"**
+→ **Create Agent**
 
-### Phase 4: Deploy Both Agents to Workshop (1:45–2:15)
+### 5. Deploy to Workshop (1:40–2:15)
 
-1. Switch to **"Workshop"** tab
-2. **Hover the left edge** — the Agent Sidebar slides out
-3. **Drag "PyBoi"** from the sidebar into the 3D scene and drop it
-4. The agent appears as a 3D chibi character at the drop position
-5. **Drag "BashBuddy"** into the scene too
-6. Click on an agent — a **selection ring** appears, the camera focuses on it
+Switch to **"Workshop"** tab. The 3D isometric scene loads with auto-rotate. **Hover the left edge** → agent sidebar slides out.
 
-👉 **XP toasts fire as you deploy each:**
-- "+40 XP — Deploy to Workshop"
-- When second is deployed: **"+60 XP — Field Two Agents"**
-- **"Filesystem Unlocked!"** toast fires (you now have access to read/write tools)
+- **Drag PyBoi** from sidebar into the scene → drops at cursor position as a 3D chibi character with floating name badge
+- **Drag BashBuddy** → drops separately
 
-### Phase 5: Chat with an Agent (2:15–2:45)
+Click an agent → selection ring appears, camera focuses on it. Sidebar shows demo badge on prebuilt agents and expandable info (prompt, skills, model).
 
-1. Click on PyBoi in the scene → the **Chat Panel** slides out from the right
-2. Type: *"Write a Python function called `greet(name)` that returns a greeting."*
-3. Watch as:
-   - Agent animation changes to "thinking" 
-   - Response streams in via SSE
-   - Tool call cards appear if the agent uses tools
-   - Final response appears as formatted markdown
+👉 First deploy: **"+40 XP — Deploy to Workshop"**
+👉 Second deploy completes **"Field Two Agents · +60 XP"** → **Filesystem unlocked!**
+👉 Progress: **Tier 1 complete (140 XP)** → promotes to **Tier 2**
 
-👉 **XP toast fires:** "+50 XP — First Chat"
-👉 **Tier 1 complete!** Tier promotion toast: **"Tier 2 — Tools unlocked"**
-👉 **Tool Introduction Modal** appears — explains file + bash tools
+**Say:** *"Drag and drop — agents become 3D characters in the scene. Click to focus. The challenge dock tracks everything."*
 
-### Phase 6: Run a Challenge (2:45–3:30)
+### 6. Chat with SSE Streaming (2:15–2:45)
 
-1. Click **"Challenges"** tab in the dock (or click the challenge dock bottom-left)
-2. Click the **"Change Prompt"** challenge
-3. A challenge detail popup explains what to do
-4. Click **"Run Challenge"**
-5. The challenge runner interface appears — select an agent and execute
-6. Watch the challenge run: agent responds, evaluation runs, results display
-7. **XP awarded** based on the challenge result
+Click PyBoi in scene → **Chat panel** slides out from the right. Shows agent state, model, skills, and a text input.
 
-### Phase 7: Use Tools via Chat (3:30–4:00)
+Type: *"Write a `greet(name)` function that returns a hello message."*
 
-1. Click BashBuddy in the scene to open chat
-2. Type: *"Write a script called 'hello.sh' that prints 'Hello from Goobs!' and run it."*
-3. The agent will:
-   - Call `write_file` to create the script
-   - Call `exec_bash` to run it
-   - Show both tool call cards inline
+Watch:
+1. Agent animation → **thinking** (FSM state change)
+2. Response streams via SSE (Server-Sent Events)
+3. Text renders as formatted markdown
+4. Animation → **idle** when done
 
-👉 **Tool use events fire progression:**
-- Write File challenge completes
-- Exec Bash challenge completes  
-- When both happen: **Build a Script** counter starts
+👉 **"+50 XP — First Chat"** → all Tier 1 challenges complete
+👉 **"Tools Unlocked!"** modal appears — explains File Tools + Bash Commands + how to enable tool profiles in edit panel
 
-### Phase 8: Show Progression (4:00–4:30)
+**Say:** *"Real-time streaming chat with your agent. Markdown responses, thinking animation, per-agent conversation history that persists across tab switches."*
 
-1. Point to the **Challenge Dock** (bottom-left) — shows completed challenges with checkmarks
-2. Click a completed challenge → **Challenge Detail Popup** shows "Completed ✓" with XP earned
-3. Highlight:
-   - Filesystem badge: unlocked ✓
-   - Bash badge: unlocked ✓
-   - Tier badges showing current tier
+### 7. Tool Use via Chat (2:45–3:30)
 
-### Phase 9: Wrap-Up (4:30–5:00)
+Now that tools are unlocked (Tier 2), edit BashBuddy's tool profile:
 
-> *"What just happened: You created 2 custom AI agents with different skills and personalities, deployed them as 3D characters, chatted with them, watched them use tools to write and run code, and leveled up through 8 progression challenges — all in under 5 minutes.*
+1. Click gear icon → config panel
+2. Open BashBuddy from sidebar, update tool profile to **"Read + Write"** or **"Full"** (gated by tier)
+3. In chat, ask: *"Create a script called greet.sh that prints 'Hello from Goobs' and run it."*
 
-> *Goobs teaches AI agent concepts through play. System prompts, skills, tools, models — every challenge maps to a real skill. The 3D characters make it visual. The progression system makes it a game.*
+Agent will:
+1. Call `write_file` → creates the script (collapsible tool call card shows file path)
+2. Call `exec_bash` → runs it (card shows command, stdout, exit code)
+3. Return the output
 
-> *And the best part? These are real LLM agents doing real work. The code they write, the files they create, the commands they run — it all works."*
+👉 Tool call cards display inline with real-time progress: call args → execution → result
+👉 **"+50 XP — Write a File"**, **"+100 XP — Execute Bash Command"** (Bash unlocked!)
+👉 If both fire in same turn, **"Build a Script"** counter ticks
 
----
+**Say:** *"Tier 2 unlocks filesystem and bash tools. Tool call cards show every step — what the agent wrote, what commands it ran, and the output."*
 
-## Key Moments to Hit
+### 8. Run a Workshop Challenge (3:30–4:00)
 
-| Timestamp | Moment | Why It Matters |
-|-----------|--------|----------------|
-| 0:10 | Launch screen | Visual hook — 3D scene + rainbow branding |
-| 0:45 | Skill modal | Skills = markdown knowledge blocks (novel mechanic) |
-| 1:30 | Create 2nd agent | Demonstrates multi-agent concepts |
-| 2:00 | Drag & drop deploy | 3D integration — agents as tangible characters |
-| 2:20 | Field Two Agents challenge | Counter-based challenge | 
-| 2:40 | Chat streaming | Real-time SSE + "thinking" animation |
-| 3:00 | Tier 2 promotion + tool unlock | Progression system payoff |
-| 3:20 | Challenge run | Built-in evaluation engine |
-| 4:00 | Tool call cards | Agent using read/write/bash in real time |
+Click **gear icon → Config → Challenges** (or the gear to open config, then ChallengeRunnerPanel). Or click the challenge dock bottom-left and click a challenge to view details.
+
+Select a challenge (e.g., **"Change Prompt"**), pick an agent, click **"Run Challenge"**.
+
+The challenge runner:
+1. Sends prompt to the agent (optionally with tools for code-writer/multi-tool)
+2. Runs evaluation engine (deterministic checks + rubric scoring)
+3. Shows PASS/FAIL with score, XP awarded, level
+4. Stores result in ChallengeRun table
+
+**Say:** *"The workshop has 3 built-in challenges. In 'Change Prompt,' the agent writes a poem about AI and we check for keywords. In 'Code Writer,' the agent writes a Python function using file and bash tools. In 'Multi-Tool,' it designs a REST API — plan then implement."*
+
+### 9. Progression Wrap-Up (4:00–4:30)
+
+Point to the **challenge dock** bottom-left. It shows:
+- Completed challenges with checkmarks
+- Current tier and progress counters (agents deployed, files written, commands run)
+- Unlock badges (Filesystem ✓, Bash ✓)
+- XP and level tracking
+
+Every action fires progression events. The engine checks all 8 challenges on each event, awarding XP and unlocks immediately.
+
+**Say:** *"8 challenges across 3 tiers. Create → deploy → chat → tool use → automation. Every action earns XP, unlocks new capabilities, and teaches you how agents really work. These are real LLM agents doing real work — the code they write, the files they create, the commands they run — it all works."*
 
 ---
 
-## Gamification Judging Criteria Mapping
+## Progression Reference
 
-### Technical Execution (25%)
-- 3D scene with R3F, drop-to-deploy, animation states
-- LLM orchestration with SSE streaming + tool calls
-- Progression engine with 8 challenges, counters, event triggers
-- Evaluation engine with deterministic checks + rubric scoring
-
-### Innovation & Creativity (25%)
-- Agents as 3D chibi characters — not terminal text or chat bubbles
-- Skills as markdown knowledge blocks (user-writable)
-- Progression system that teaches real AI concepts through play
-- Tool unlock gating as a game mechanic
-
-### Impact & Usefulness (25%)
-- Teaches: prompt engineering, model selection, tool use, multi-agent
-- Real agents doing real work (writing code, running commands)
-- Works with any OpenAI-compatible provider
-
-### Presentation & Demo (25%)
-- Visual from second one — 3D characters bouncing in scene
-- "Level up" moment = toast + animation = filmable
-- Complete arc: create → deploy → chat → challenge → level up
-- Fun factor: only project with chibi AI characters
+| Tier | Challenge | Trigger | XP | Unlock |
+|------|-----------|---------|----|--------|
+| 1 | Create Agent | `agent_created` | 20 | — |
+| 1 | Add Skill | `skill_added` | 30 | — |
+| 1 | Deploy to Workshop | `agent_deployed` | 40 | — |
+| 1 | First Chat | `chat_sent` | 50 | — |
+| 2 | Field Two Agents | counter: 2 deploy | 60 | filesystem |
+| 2 | Write a File | counter: 1 write | 50 | — |
+| 2 | Execute Bash | counter: 1 bash | 100 | bash |
+| 3 | Build a Script | counter: 2 combo | 200 | — |
 
 ---
 
-## Challenge Flow Summary
+## Judging Criteria Mapping
 
-```
-Tier 1 (Onboarding)
-  ├── Create Agent     → event: agent_created     → +20 XP
-  ├── Add Skill        → event: skill_added        → +30 XP
-  ├── Deploy Workshop  → event: agent_deployed     → +40 XP
-  └── First Chat       → event: chat_sent          → +50 XP
-                      ─────────────────────────────────
-                      Total Tier 1: 140 XP → promotes to Tier 2
-                      Unlocks: filesystem tools
-
-Tier 2 (Tools)
-  ├── Field Two Agents → counter: 2 deploy        → +60 XP
-  ├── Write a File     → counter: 1 write_file     → +50 XP
-  └── Exec Bash        → counter: 1 exec_bash      → +100 XP
-                      ─────────────────────────────────
-                      Total Tier 2: 210 XP → promotes to Tier 3
-                      Unlocks: bash tools
-
-Tier 3 (Automation)
-  └── Build a Script   → counter: 2 build_script   → +200 XP
-                      (requires write + bash combo)
-```
+| Criterion | How Goobs Hits It |
+|-----------|-------------------|
+| **Technical (25%)** | R3F 3D scene with FSM animations, drop-to-deploy, SSE streaming chat, tool registry/execution, evaluation engine, progression engine |
+| **Innovation (25%)** | Agents as customizable 3D chibi characters (not terminal text), skills as user-written markdown, tool unlocks as game mechanic |
+| **Impact (25%)** | Teaches real agent concepts — prompts, skills, models, tools — through play. Real work (code, files, bash) from real LLM agents |
+| **Presentation (25%)** | Visual from second one (3D scene, rainbow launch), progression toasts + animations = filmable, clear arc: create → deploy → chat → level up |
 
 ---
 
-## Quick Reference: What to Say
+## Key Lines to Say
 
-**Opening:** *"Goobs turns AI agent concepts into a game. Every action earns XP and unlocks new capabilities."*
-
-**On skills:** *"Skills are markdown knowledge blocks. You write them — they teach your agent what it needs to know."*
-
-**On deployment:** *"Drag and drop agents into the 3D scene. They're real characters now."*
-
-**On progression:** *"Every action fires a progression event. The challenge dock tracks everything. Complete challenges to unlock tools."*
-
-**On tools:** *"Once unlocked, your agents can read, write, and execute files. Real tools doing real work."*
-
-**Closing:** *"In 5 minutes you built two agents, taught them skills, deployed them, chatted with them, and leveled up. This is how you learn AI agents — by playing."*
+- *"Skills are markdown knowledge blocks. You write them — they teach your agent what it needs to know."*
+- *"Drag and drop — agents become 3D characters in a living workshop."*
+- *"The challenge dock tracks everything. Complete challenges to unlock tools."*
+- *"Tier 2 unlocks filesystem and bash — your agents can read, write, and execute."*
+- *"8 challenges, 3 tiers, real agents doing real work. This is how you learn AI agents — by playing."*

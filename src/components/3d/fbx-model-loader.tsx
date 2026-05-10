@@ -30,6 +30,7 @@ function resolveClipName(animations: THREE.AnimationClip[], targetName: string):
   if (direct) return direct
   const aliases: Record<string, string[]> = {
     "transistion": ["transition"],
+    "transition": ["transistion"],
     "lying_down": ["lying_down_transistion"],
   }
   for (const [key, alts] of Object.entries(aliases)) {
@@ -173,18 +174,20 @@ export function FBXModelLoader({
       }
 
       newAction.reset().fadeIn(0.5).play()
+      activeActionRef.current = newAction
 
-      const handleFinish = () => {
-        onAnimationFinishedRef.current?.(animationState)
+      const handleFinish = (e: any) => {
+        if (e.action === newAction) {
+          onAnimationFinishedRef.current?.(animationState)
+        }
       }
 
       if (!loop || playReverse) {
-        ;(newAction as any).addEventListener("finished", handleFinish)
+        mixerRef.current.addEventListener("finished", handleFinish)
       }
-      activeActionRef.current = newAction
 
       return () => {
-        ;(newAction as any).removeEventListener("finished", handleFinish)
+        mixerRef.current?.removeEventListener("finished", handleFinish)
       }
     }
   }, [animationState, holdLastFrame, playReverse, loop, animationMapping])

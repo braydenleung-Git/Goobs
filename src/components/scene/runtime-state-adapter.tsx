@@ -28,6 +28,7 @@ interface RuntimeState {
   dropPreview: { screenX: number; screenY: number } | null
   setAgentAnimation: (agentId: string, state: AnimationState) => void
   setInstanceAnimation: (instanceId: string, state: AnimationState) => void
+  setInstancePosition: (instanceId: string, position: [number, number, number]) => void
   routeAgent: (agentId: string, workstationId: string) => void
   spawnAgent: (agentId: string, position?: [number, number, number]) => void
   clearScene: () => void
@@ -91,6 +92,12 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const setInstancePosition = useCallback((instanceId: string, position: [number, number, number]) => {
+    setAgents((prev) =>
+      prev.map((a) => (a.instanceId === instanceId ? { ...a, position } : a)),
+    )
+  }, [])
+
   const routeAgent = useCallback((agentId: string, workstationId: string) => {
     const target = WORKSTATION_POSITIONS[workstationId]
     if (!target) return
@@ -145,6 +152,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
         dropPreview,
         setAgentAnimation,
         setInstanceAnimation,
+        setInstancePosition,
         routeAgent,
         spawnAgent,
         clearScene,

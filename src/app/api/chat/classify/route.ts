@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await runChatCompletion({
-      model: "OpenCode/deepseek-v4-flash",
+      model: "deepseek-v4-flash",
       messages: [{ role: "user", content: message.slice(0, 1000) }],
       systemPrompt: CLASSIFY_PROMPT,
     })

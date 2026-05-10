@@ -36,7 +36,7 @@ function AgentCharacter({
   instanceId: string
   position: [number, number, number]
 }) {
-  const { agents, agentMeta, selectAgent, selectedInstanceId, setInstanceAnimation } = useRuntimeState()
+  const { agents, agentMeta, selectAgent, selectedInstanceId, setInstanceAnimation, setInstancePosition } = useRuntimeState()
   const groupRef = useRef<THREE.Group>(null)
   const agent = agents.find((a) => a.instanceId === instanceId)
   const meta = agentMeta[agentId]
@@ -52,6 +52,7 @@ function AgentCharacter({
   const idleLongInterruptedRef = useRef(false)
   const prevSelectedRef = useRef(isSelected)
   const arrivedRef = useRef(false)
+  const posThrottleRef = useRef(0)
 
   if (entryRef.current === null) entryRef.current = Date.now()
 
@@ -95,6 +96,7 @@ function AgentCharacter({
   }, [state, instanceId, setInstanceAnimation])
 
   // Animation chaining via onAnimationFinished
+  // Sitting → working is NOT auto-chained — working is set externally by challenges/tools
   const handleAnimationFinished = useCallback((finishedState: string) => {
     if (pendingStateRef.current) {
       const next = pendingStateRef.current
@@ -105,14 +107,12 @@ function AgentCharacter({
     }
     if (finishedState === "attention_start") {
       setInstanceAnimation(instanceId, "attention_loop")
-    } else if (finishedState === "sitting") {
-      setInstanceAnimation(instanceId, "working")
     } else if (finishedState === "celebrate" || finishedState === "error") {
       setInstanceAnimation(instanceId, "idle")
     }
   }, [instanceId, setInstanceAnimation])
 
-  // Movement + spawn scale
+  // Movement + rotation + spawn scale + throttled position updates
   useFrame((_, delta) => {
     if (!groupRef.current || entryRef.current === null) return
 
@@ -136,13 +136,29 @@ function AgentCharacter({
         cur.z = target[2]
         arrivedRef.current = true
         setInstanceAnimation(instanceId, "sitting")
+        setInstancePosition(instanceId, [cur.x, 0, cur.z])
       }
       return
     }
     arrivedRef.current = false
+
+    // Smooth rotation toward movement direction
+    const angle = Math.atan2(dx, dz)
+    let diff = angle - groupRef.current.rotation.y
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    groupRef.current.rotation.y += diff * Math.min(1, 8 * delta)
+
     const step = Math.min(WALK_SPEED * delta, dist)
     cur.x += (dx / dist) * step
     cur.z += (dz / dist) * step
+
+    // Throttled position updates for camera tracking
+    posThrottleRef.current += delta
+    if (posThrottleRef.current >= 0.15) {
+      posThrottleRef.current = 0
+      setInstancePosition(instanceId, [cur.x, 0, cur.z])
+    }
   })
 
   const color = state === "celebrate" ? "#a6e3a1"
@@ -169,7 +185,7 @@ function AgentCharacter({
         onClick={handleClick}
         animationMapping={ANIMATION_MAPPING}
         loop={!isOneShot}
-        holdLastFrame={state === "idle_long"}
+        holdLastFrame={state === "idle_long" || state === "sitting"}
         playReverse={playReverse}
         onAnimationFinished={handleAnimationFinished}
       />
