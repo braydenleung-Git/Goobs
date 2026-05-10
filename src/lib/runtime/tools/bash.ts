@@ -62,16 +62,18 @@ export function createBashTool(agentId: string, timeoutMs: number = 10000): Tool
         timeout,
       })
 
+      const sOut = result.stdout ?? ""
+      const sErr = result.stderr ?? ""
+      let output = ""
+      if (sOut) output += sOut
+      if (sErr) output += (output ? "\n" : "") + "stderr:\n" + sErr
+      output = output || "Command completed (exit 0)"
       return {
         callId: name,
         name,
         success: true,
-        output: `Command completed (exit 0)`,
-        data: {
-          stdout: result.stdout ?? "",
-          stderr: result.stderr ?? "",
-          exitCode: 0,
-        },
+        output,
+        data: { stdout: sOut, stderr: sErr, exitCode: 0 },
       }
     } catch (error: unknown) {
       const err = error as {
@@ -94,14 +96,20 @@ export function createBashTool(agentId: string, timeoutMs: number = 10000): Tool
       }
 
       const exitCode = err.code ?? 1
+      const errOut = err.stdout ?? ""
+      const errErr = err.stderr ?? ""
+      let errOutput = ""
+      if (errOut) errOutput += errOut
+      if (errErr) errOutput += (errOutput ? "\n" : "") + "stderr:\n" + errErr
+      errOutput = errOutput || "Command completed (exit " + exitCode + ")"
       return {
         callId: name,
         name,
         success: true,
-        output: `Command completed (exit ${exitCode})`,
+        output: errOutput,
         data: {
-          stdout: err.stdout ?? "",
-          stderr: err.stderr ?? "",
+          stdout: errOut,
+          stderr: errErr,
           exitCode,
         },
       }
