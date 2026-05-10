@@ -46,10 +46,10 @@ interface RuntimeState {
 const RuntimeStateContext = createContext<RuntimeState | null>(null)
 
 const WORKSTATION_POSITIONS: Record<string, [number, number, number]> = {
-  computer: [4, 0, 0],
-  "drawing-tablet": [0, 0, 4],
-  whiteboard: [-4, 0, 0],
-  book: [0, 0, -4],
+  computer: [3, 0, 0],
+  "drawing-tablet": [0, 0, 3],
+  whiteboard: [-3, 0, 0],
+  book: [0, 0, -3],
 }
 
 let spawnIndex = 0

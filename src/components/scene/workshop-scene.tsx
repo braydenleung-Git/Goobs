@@ -260,9 +260,9 @@ function WorkstationMarker({
   color: string
 }) {
   const rotation: [number, number, number] = label === "Computer" ? [0, Math.PI / 2, 0]
-    : label === "Drawing Tablet" ? [0, 0, 0]
-    : label === "Whiteboard" ? [0, -Math.PI / 4, 0]
-    : [0, Math.PI / 4, 0]
+    : label === "Whiteboard" ? [0, -Math.PI / 2, 0]
+    : label === "Book" ? [0, Math.PI, 0]
+    : [0, 0, 0]
 
   return (
     <group position={[position[0], 0.01, position[2]]}>

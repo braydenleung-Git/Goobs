@@ -312,7 +312,7 @@ function ToolCallCard({ call }: { call: { name: string; arguments: string; outpu
 }
 
 function AgentChatPanel() {
-  const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation, setInstanceAnimation, setTaskResult, routeAgent } = useRuntimeState()
+  const { selectedAgentId, selectedInstanceId, agents, agentMeta, selectAgent, setAgentAnimation, setInstanceAnimation, setTaskResult, routeAgent } = useRuntimeState()
 
   interface ToolCallEntry {
     name: string
@@ -334,9 +334,10 @@ function AgentChatPanel() {
   const [chatLogs, setChatLogs] = useState<Record<string, ChatEntry[]>>({})
   const [profile, setProfile] = useState<{ skillsJson: string; toolsJson: string; defaultModel: string } | null>(null)
   const [sending, setSending] = useState(false)
-  const chatSentRef = useRef(false)
+  const chatSentMapRef = useRef<Record<string, boolean>>({})
+  const chatLogKey = selectedInstanceId || selectedAgentId || ""
 
-  const chatLog = selectedAgentId ? chatLogs[selectedAgentId] ?? [] : []
+  const chatLog = chatLogKey ? chatLogs[chatLogKey] ?? [] : []
 
   useEffect(() => {
     if (selectedAgentId) {
@@ -352,12 +353,12 @@ function AgentChatPanel() {
     } else {
       setProfile(null)
     }
-  }, [selectedAgentId])
+  }, [chatLogKey])
 
   if (!selectedAgentId) return null
 
-  const agent = agents.find((a) => a.agentId === selectedAgentId)
-  const meta = agentMeta[selectedAgentId]
+  const agent = agents.find((a) => a.instanceId === selectedInstanceId)
+  const meta = agentMeta[chatLogKey]
   if (!agent) return null
 
   const stateColor = agent.animationState === "celebrate" ? "#a6e3a1"
@@ -380,7 +381,7 @@ function AgentChatPanel() {
     setMessage("")
     setChatLogs((prev) => ({
       ...prev,
-      [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "user", text: userMsg }],
+      [chatLogKey]: [...(prev[chatLogKey] ?? []), { role: "user", text: userMsg }],
     }))
     setSending(true)
     setAgentAnimation(selectedAgentId, "thinking")
@@ -426,7 +427,7 @@ function AgentChatPanel() {
 
       setChatLogs((prev) => ({
         ...prev,
-        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "" }],
+        [chatLogKey]: [...(prev[chatLogKey] ?? []), { role: "agent", text: "" }],
       }))
 
       while (true) {
@@ -449,10 +450,10 @@ function AgentChatPanel() {
             if (parsed.type === "text") {
               fullText += parsed.content
               setChatLogs((prev) => {
-                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const msgs = [...(prev[chatLogKey] ?? [])]
                 const last = msgs[msgs.length - 1]
                 if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
-                return { ...prev, [selectedAgentId]: msgs }
+                return { ...prev, [chatLogKey]: msgs }
               })
               continue
             }
@@ -460,21 +461,21 @@ function AgentChatPanel() {
             if (parsed.type === "tool_call") {
               toolCallsAcc.push({ name: parsed.name })
               setChatLogs((prev) => {
-                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const msgs = [...(prev[chatLogKey] ?? [])]
                 const last = msgs[msgs.length - 1]
                 if (last && last.role === "agent") {
                   const calls = last.toolCalls ? [...last.toolCalls] : []
                   calls.push({ name: parsed.name, arguments: parsed.arguments, output: "", stdout: "", stderr: "", files: undefined })
                   msgs[msgs.length - 1] = { ...last, toolCalls: calls }
                 }
-                return { ...prev, [selectedAgentId]: msgs }
+                return { ...prev, [chatLogKey]: msgs }
               })
               continue
             }
 
             if (parsed.type === "tool_result") {
               setChatLogs((prev) => {
-                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const msgs = [...(prev[chatLogKey] ?? [])]
                 const last = msgs[msgs.length - 1]
                 if (last && last.role === "agent" && last.toolCalls) {
                   const calls = [...last.toolCalls]
@@ -484,7 +485,7 @@ function AgentChatPanel() {
                   }
                   msgs[msgs.length - 1] = { ...last, toolCalls: calls }
                 }
-                return { ...prev, [selectedAgentId]: msgs }
+                return { ...prev, [chatLogKey]: msgs }
               })
               continue
             }
@@ -492,10 +493,10 @@ function AgentChatPanel() {
             if (parsed.type === "done") {
               if (!fullText) fullText = parsed.content || "(no response)"
               setChatLogs((prev) => {
-                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const msgs = [...(prev[chatLogKey] ?? [])]
                 const last = msgs[msgs.length - 1]
                 if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
-                return { ...prev, [selectedAgentId]: msgs }
+                return { ...prev, [chatLogKey]: msgs }
               })
               continue
             }
@@ -505,10 +506,10 @@ function AgentChatPanel() {
             if (delta) {
               fullText += delta
               setChatLogs((prev) => {
-                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const msgs = [...(prev[chatLogKey] ?? [])]
                 const last = msgs[msgs.length - 1]
                 if (last && last.role === "agent") msgs[msgs.length - 1] = { ...last, text: fullText }
-                return { ...prev, [selectedAgentId]: msgs }
+                return { ...prev, [chatLogKey]: msgs }
               })
             }
           } catch {}
@@ -517,14 +518,14 @@ function AgentChatPanel() {
 
       if (!fullText) {
         setChatLogs((prev) => {
-          const msgs = [...(prev[selectedAgentId] ?? [])]
+          const msgs = [...(prev[chatLogKey] ?? [])]
           msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], text: "(no response)" }
-          return { ...prev, [selectedAgentId]: msgs }
+          return { ...prev, [chatLogKey]: msgs }
         })
       }
 
-      if (!chatSentRef.current) {
-        chatSentRef.current = true
+      if (!chatSentMapRef.current[chatLogKey]) {
+        chatSentMapRef.current[chatLogKey] = true
         ;(window as any).__goobsProgressionEvent?.("chat_sent")
       }
 
@@ -536,12 +537,11 @@ function AgentChatPanel() {
       const buildPairs = Math.min(writeCount, bashCount)
       for (let i = 0; i < buildPairs; i++) (window as any).__goobsProgressionEvent?.("tool_build_script")
 
-      const chatInstance = agents.find((a) => a.agentId === selectedAgentId)
-      if (chatInstance) setTaskResult(chatInstance.instanceId, "celebrate")
+      if (selectedInstanceId) setTaskResult(selectedInstanceId, "celebrate")
     } catch {
       setChatLogs((prev) => ({
         ...prev,
-        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "*error* Failed to reach agent" }],
+        [chatLogKey]: [...(prev[chatLogKey] ?? []), { role: "agent", text: "*error* Failed to reach agent" }],
       }))
     } finally {
     setSending(false)
