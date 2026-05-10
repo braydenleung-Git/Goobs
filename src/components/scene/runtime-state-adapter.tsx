@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
 
-export type AnimationState = "idle" | "thinking" | "typing" | "celebrate" | "error" | "walking"
+export type AnimationState = "idle" | "thinking" | "typing" | "celebrate" | "error" | "walking" | "idle_long" | "sitting" | "working" | "stand" | "easter_egg"
 
 export interface AgentSceneState {
   instanceId: string

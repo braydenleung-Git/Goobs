@@ -5,9 +5,30 @@ import { OrbitControls, Grid, Html } from "@react-three/drei"
 import { useRuntimeState } from "./runtime-state-adapter"
 import { useCallback, useEffect, useRef } from "react"
 import * as THREE from "three"
+import { FBXModelLoader } from "../3d/fbx-model-loader"
 
 const WALK_SPEED = 3
 const SPAWN_DURATION = 400
+const IDLE_LONG_THRESHOLD = 60000 // 1 minute in milliseconds
+const SITTING_TO_WORKING_DURATION = 1500 // 1.5 seconds for 30-frame sitting animation at 24 FPS
+const REVERSE_SITTING_DURATION = 1500 // 1.5 seconds for reverse sitting animation
+const TASK_COMPLETION_CHECK_INTERVAL = 5000 // Check for task completion every 5 seconds while working
+const IDLE_TO_STAND_CHANCE = 0.01 // 10% chance per frame to transition from idle to stand
+const STAND_TO_EASTER_EGG_DURATION = 2000 // 2 seconds before transitioning from stand to easter_egg
+
+// Custom animation mapping for FBX model NLA strips
+const ANIMATION_MAPPING = {
+  stand: "No_Pose",
+  idle: "Idle",
+  walking: "Walking",    
+  sitting: "Sitting_Transition",
+  working: "Working",
+  celebrate: "Finish_Task_1",
+  attention_start: "Attention_Start",     
+  attention_loop: "Attention_Loop",    
+  idle_long: "lying_down_transistion",
+  easter_egg: "67"
+}
 
 function AgentCharacter({
   agentId,
@@ -26,6 +47,15 @@ function AgentCharacter({
   const isSelected = selectedInstanceId === instanceId
   const target = agent?.targetPosition
   const entryRef = useRef<number | null>(null)
+  const idleStartTimeRef = useRef<number | null>(null)
+  const lastStateRef = useRef<string>(state)
+  const wasIdleLongRef = useRef<boolean>(false)
+  const sittingStartTimeRef = useRef<number | null>(null)
+  const workingStartTimeRef = useRef<number | null>(null)
+  const reverseSittingStartTimeRef = useRef<number | null>(null)
+  const taskCompletedRef = useRef<boolean>(false)
+  const standStartTimeRef = useRef<number | null>(null)
+  const idleRandomCheckRef = useRef<number>(0)
 
   if (entryRef.current === null) entryRef.current = Date.now()
 
@@ -41,6 +71,112 @@ function AgentCharacter({
       groupRef.current.scale.setScalar(1)
     }
 
+    // Track state changes and timers
+    if (state !== lastStateRef.current) {
+      // State changed, reset tracking
+      wasIdleLongRef.current = lastStateRef.current === "idle_long"
+      lastStateRef.current = state
+      
+      // Reset idle tracking
+      if (state === "idle") {
+        idleStartTimeRef.current = Date.now()
+        taskCompletedRef.current = false
+      } else {
+        idleStartTimeRef.current = null
+      }
+      
+      // Reset sitting tracking
+      if (state === "sitting") {
+        sittingStartTimeRef.current = Date.now()
+      } else {
+        sittingStartTimeRef.current = null
+      }
+      
+      // Reset working tracking
+      if (state === "working") {
+        workingStartTimeRef.current = Date.now()
+      } else {
+        workingStartTimeRef.current = null
+      }
+      
+      // Reset reverse sitting tracking
+      if (state === "sitting" && lastStateRef.current === "working") {
+        reverseSittingStartTimeRef.current = Date.now()
+      } else if (state !== "sitting") {
+        reverseSittingStartTimeRef.current = null
+      }
+      
+      // Reset stand tracking
+      if (state === "stand") {
+        standStartTimeRef.current = Date.now()
+      } else {
+        standStartTimeRef.current = null
+      }
+      
+      // Reset idle random check when leaving idle
+      if (state !== "idle") {
+        idleRandomCheckRef.current = 0
+      }
+    }
+
+    // Handle idle to idle_long transition
+    if (state === "idle" && idleStartTimeRef.current) {
+      const idleDuration = Date.now() - idleStartTimeRef.current
+      if (idleDuration >= IDLE_LONG_THRESHOLD) {
+        setAgentAnimation(agentId, "idle_long")
+        idleStartTimeRef.current = null
+      }
+    }
+
+    // Handle random idle to stand transition
+    if (state === "idle") {
+      idleRandomCheckRef.current += delta
+      // Check every second to reduce performance impact
+      if (idleRandomCheckRef.current >= 1) {
+        idleRandomCheckRef.current = 0
+        if (Math.random() < IDLE_TO_STAND_CHANCE) {
+          setAgentAnimation(agentId, "stand")
+        }
+      }
+    }
+
+    // Handle stand to easter_egg transition
+    if (state === "stand" && standStartTimeRef.current) {
+      const standDuration = Date.now() - standStartTimeRef.current
+      if (standDuration >= STAND_TO_EASTER_EGG_DURATION) {
+        setAgentAnimation(agentId, "easter_egg")
+        standStartTimeRef.current = null
+      }
+    }
+
+    // Handle sitting to working transition
+    if (state === "sitting" && sittingStartTimeRef.current && !reverseSittingStartTimeRef.current) {
+      const sittingDuration = Date.now() - sittingStartTimeRef.current
+      if (sittingDuration >= SITTING_TO_WORKING_DURATION) {
+        setAgentAnimation(agentId, "working")
+        sittingStartTimeRef.current = null
+      }
+    }
+
+    // Handle task completion detection while working
+    if (state === "working" && workingStartTimeRef.current && !taskCompletedRef.current) {
+      const workingDuration = Date.now() - workingStartTimeRef.current
+      // Simulate task completion after 10 seconds of working
+      if (workingDuration >= 10000) {
+        taskCompletedRef.current = true
+        setAgentAnimation(agentId, "sitting") // Start reverse sitting
+      }
+    }
+
+    // Handle reverse sitting to celebration transition
+    if (state === "sitting" && reverseSittingStartTimeRef.current) {
+      const reverseSittingDuration = Date.now() - reverseSittingStartTimeRef.current
+      if (reverseSittingDuration >= REVERSE_SITTING_DURATION) {
+        setAgentAnimation(agentId, "celebrate")
+        reverseSittingStartTimeRef.current = null
+      }
+    }
+
     if (!target) return
     const cur = groupRef.current.position
     const dx = target[0] - cur.x
@@ -49,7 +185,7 @@ function AgentCharacter({
     if (dist < 0.05) {
       cur.x = target[0]
       cur.z = target[2]
-      setAgentAnimation(agentId, "thinking")
+      setAgentAnimation(agentId, "sitting")
       return
     }
     const step = Math.min(WALK_SPEED * delta, dist)
@@ -61,6 +197,10 @@ function AgentCharacter({
     : state === "error" ? "#f38ba8"
     : state === "walking" ? "#fab387"
     : state === "thinking" ? "#cba6f7"
+    : state === "working" ? "#f9e2af"
+    : state === "sitting" ? "#94e2d5"
+    : state === "stand" ? "#b4befe"
+    : state === "easter_egg" ? "#f5c2e7"
     : meta?.color ?? "#89b4fa"
 
   const height = state === "celebrate" ? 0.8 : 0.6
@@ -72,20 +212,17 @@ function AgentCharacter({
 
   return (
     <group ref={groupRef} position={[position[0], 0, position[2]]}>
-      <mesh onClick={handleClick}>
-        <capsuleGeometry args={[0.3, height, 4, 8]} />
-        <meshStandardMaterial
-          color={color}
-          roughness={0.4}
-          metalness={0.1}
-          transparent
-          opacity={isSelected ? 1 : 0.85}
-        />
-      </mesh>
-      <mesh position={[0, 0.7, 0]} onClick={handleClick}>
-        <sphereGeometry args={[0.2, 8, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.3} />
-      </mesh>
+      <FBXModelLoader
+        url="/3d/goobs.fbx"
+        scale={[0.01, 0.01, 0.01]}
+        position={[0, 0, 0]}
+        animationState={state}
+        color={color}
+        onClick={handleClick}
+        animationMapping={ANIMATION_MAPPING}
+        holdLastFrame={state === "idle_long" || state === "sitting"}
+        playReverse={(wasIdleLongRef.current && state !== "idle_long") || (reverseSittingStartTimeRef.current !== null)}
+      />
       {isSelected && (
         <mesh position={[0, -0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.35, 0.45, 32]} />
