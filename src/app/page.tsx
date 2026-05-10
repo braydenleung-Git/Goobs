@@ -11,7 +11,6 @@ import { AgentPreviewScene } from "@/components/create/agent-preview-scene"
 import { AgentsGrid } from "@/components/agents/agents-grid"
 import { ConfigPanels } from "@/components/workshop/config-panels"
 import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/challenge-runner-panel"
-import { ProgressAndHistory } from "@/components/workshop/progress-and-history"
 import { DemoControls } from "@/components/workshop/demo-controls"
 import { LaunchScreen } from "@/components/workshop/launch-screen"
 import { ChallengeDock } from "@/components/workshop/challenge-dock"
@@ -109,7 +108,7 @@ function WorkshopContent() {
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-base">
       {showLaunch && <LaunchScreen onStart={() => { setWalkthroughStarted(); setShowLaunch(false) }} onSkip={() => setShowLaunch(false)} />}
-      <TopNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <TopNav activeTab={activeTab} onTabChange={setActiveTab} onOpenConfig={() => setShowConfig(true)} />
 
       <div className="relative flex-1">
         {activeTab === "workshop" ? (
@@ -122,30 +121,7 @@ function WorkshopContent() {
               <WorkshopScene />
             </div>
 
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
-              <div className="glass rounded-full px-3 py-2 flex items-center gap-2">
-                <button
-                  onClick={() => setShowChallenge(true)}
-                  className="btn-ghost rounded-full px-4 py-1.5 font-body text-xs font-medium"
-                >
-                  Run Challenge
-                </button>
-                <div className="h-4 w-px bg-white/5" />
-                <button
-                  onClick={() => setShowConfig(true)}
-                  className="btn-ghost rounded-full px-4 py-1.5 font-body text-xs font-medium"
-                >
-                  Config
-                </button>
-                <div className="h-4 w-px bg-white/5" />
-                <div className="px-2">
-                  <ProgressAndHistory ref={progressRef} compact />
-                </div>
-              </div>
-            </div>
-
             <AgentSidebar />
-
             <AgentChatPanel />
 
             {showConfig && (

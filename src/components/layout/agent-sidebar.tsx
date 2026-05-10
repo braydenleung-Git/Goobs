@@ -35,10 +35,14 @@ export function AgentSidebar() {
   return (
     <>
       <div
-        className="fixed left-0 top-0 z-40 h-full w-3 cursor-pointer"
-        style={{ paddingTop: "4.5rem" }}
-        onMouseEnter={() => setHovered(true)}
-      />
+        className="fixed left-0 top-0 z-40 flex items-center justify-center group"
+        style={{ paddingTop: "4.5rem", height: "100%" }}
+      >
+        <div
+          className="h-24 w-1.5 rounded-full bg-white/5 group-hover:bg-white/10 transition-all cursor-pointer"
+          onMouseEnter={() => setHovered(true)}
+        />
+      </div>
 
       <div
         className={`fixed left-0 top-0 z-50 h-full transition-all duration-200 ease-out ${

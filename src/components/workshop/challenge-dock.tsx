@@ -33,8 +33,8 @@ function DockToast({ toast, onDone }: { toast: Toast; onDone: () => void }) {
 }
 
 export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onDismissToast: (id: string) => void }) {
-  const [open, setOpen] = useState(false)
   const [completed, setCompleted] = useState<string[]>([])
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     const state = getWalkthroughState()
@@ -52,7 +52,7 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
 
   return (
     <>
-      <div className="fixed bottom-6 left-6 z-30 flex flex-col gap-2" style={{ bottom: "1.5rem", left: "6rem" }}>
+      <div className="fixed z-30 flex flex-col gap-2" style={{ bottom: "1.5rem", left: "1rem" }}>
         {toasts.length > 0 && (
           <div className="flex flex-col gap-2 mb-2">
             {toasts.map((t) => (
@@ -61,11 +61,8 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
           </div>
         )}
 
-        <button
-          onClick={() => setOpen(!open)}
-          className="glass-strong glass-border-accent rounded-2xl px-4 py-2.5 flex items-center gap-3 transition-all hover:scale-[1.02]"
-        >
-          <div className="flex items-center gap-2">
+        <div className="glass-strong glass-border-accent rounded-2xl overflow-hidden" style={{ width: "280px" }}>
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue/20">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
@@ -73,29 +70,22 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
               </svg>
             </div>
             <span className="font-display text-sm font-bold text-text">Walkthrough</span>
+            <span className="ml-auto rounded-full bg-mauve/15 px-2 py-0.5 font-display text-xs font-bold text-mauve">
+              {completedCount}/{totalSteps}
+            </span>
           </div>
-          <span className="rounded-full bg-mauve/15 px-2 py-0.5 font-display text-xs font-bold text-mauve">
-            {completedCount}/{totalSteps}
-          </span>
-          <svg
-            className={`h-3.5 w-3.5 text-subtext/50 transition-transform ${open ? "rotate-180" : ""}`}
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
 
-        {open && (
-          <div className="glass-strong glass-border-accent rounded-2xl p-4 w-72 animate-fade-in">
-            <div className="space-y-1.5">
-              {WALKTHROUGH_STEPS.map((step, i) => {
-                const done = completed.includes(step.id)
-                const active = currentStepIndex === i
-                return (
-                  <div
-                    key={step.id}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all ${
-                      done ? "bg-green/5" : active ? "bg-blue/5" : "opacity-40"
+          <div className="p-3 space-y-1">
+            {WALKTHROUGH_STEPS.map((step, i) => {
+              const done = completed.includes(step.id)
+              const active = currentStepIndex === i
+              const isExpanded = expanded === step.id
+              return (
+                <div key={step.id}>
+                  <button
+                    onClick={() => setExpanded(isExpanded ? null : step.id)}
+                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all text-left ${
+                      done ? "bg-green/5" : active ? "bg-blue/5 hover:bg-blue/[0.08]" : "opacity-40 hover:opacity-60"
                     }`}
                   >
                     <div
@@ -126,20 +116,34 @@ export function ChallengeDock({ toasts, onDismissToast }: { toasts: Toast[]; onD
                     {!done && active && (
                       <span className="flex h-2 w-2 rounded-full bg-blue animate-pulse shrink-0" />
                     )}
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-white/5">
-              <div className="font-body text-[10px] text-subtext/30 text-center">
-                {completedCount === totalSteps
-                  ? "All challenges complete! 🎉"
-                  : `Complete walkthrough steps to unlock rewards`}
-              </div>
-            </div>
+                    <svg
+                      className={`h-3 w-3 shrink-0 text-subtext/30 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {isExpanded && (
+                    <div className="mx-3 mt-1 mb-2 rounded-lg bg-white/[0.03] px-3 py-2 animate-fade-in">
+                      <div className="font-body text-[11px] text-subtext/70 leading-relaxed">
+                        {step.title === "Become a Creator" && "Go to the Agents tab and fill out the create form. Give your agent a name, system prompt, and at least one skill."}
+                        {step.title === "Skill Builder" && "Open the skill editor for your agent and write a skill in markdown. Skills define what your agent knows how to do."}
+                        {step.title === "Into the Wild" && "Switch to the Workshop tab and drag your agent from the left sidebar into the 3D scene. Drop it anywhere on the grid."}
+                        {step.title === "First Contact" && "Click on your agent in the scene to open the chat panel, then type a message and press send."}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-        )}
+
+          {completedCount === totalSteps && (
+            <div className="border-t border-white/5 px-4 py-2.5">
+              <div className="font-body text-[10px] text-green/60 text-center">All challenges complete! 🎉</div>
+            </div>
+          )}
+        </div>
       </div>
     </>
   )
