@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 export type AnimationState = "idle" | "thinking" | "typing" | "celebrate" | "error" | "walking"
 
 export interface AgentSceneState {
+  instanceId: string
   agentId: string
   animationState: AnimationState
   workstationTarget?: string
@@ -19,6 +20,7 @@ interface AgentMeta {
 
 interface RuntimeState {
   agents: AgentSceneState[]
+  selectedInstanceId: string | null
   selectedAgentId: string | null
   agentMeta: Record<string, AgentMeta>
   pendingDrop: { agentId: string; screenX: number; screenY: number } | null
@@ -27,7 +29,7 @@ interface RuntimeState {
   routeAgent: (agentId: string, workstationId: string) => void
   spawnAgent: (agentId: string, position?: [number, number, number]) => void
   clearScene: () => void
-  selectAgent: (agentId: string | null) => void
+  selectAgent: (instanceId: string | null) => void
   updateAgentMeta: (agentId: string, meta: AgentMeta) => void
   requestDrop: (agentId: string, screenX: number, screenY: number) => void
   clearDrop: () => void
@@ -45,26 +47,32 @@ const WORKSTATION_POSITIONS: Record<string, [number, number, number]> = {
 }
 
 let spawnIndex = 0
+let instanceCounter = 0
 
 export function RuntimeStateProvider({ children }: { children: ReactNode }) {
   const [agents, setAgents] = useState<AgentSceneState[]>([])
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [agentMeta, setAgentMeta] = useState<Record<string, AgentMeta>>({})
   const [pendingDrop, setPendingDrop] = useState<{ agentId: string; screenX: number; screenY: number } | null>(null)
   const [dropPreview, setDropPreviewState] = useState<{ screenX: number; screenY: number } | null>(null)
 
+  const selectedAgentId = selectedInstanceId
+    ? agents.find((a) => a.instanceId === selectedInstanceId)?.agentId ?? null
+    : null
+
   const spawnAgent = useCallback((agentId: string, position?: [number, number, number]) => {
+    const instanceId = `${agentId}::${instanceCounter++}`
     if (position) {
       setAgents((prev) => [
         ...prev,
-        { agentId, animationState: "idle", position },
+        { instanceId, agentId, animationState: "idle", position },
       ])
     } else {
       const index = spawnIndex++
       const pos: [number, number, number] = [index * 1.5 - 2, 0, 0]
       setAgents((prev) => [
         ...prev,
-        { agentId, animationState: "idle", position: pos },
+        { instanceId, agentId, animationState: "idle", position: pos },
       ])
     }
   }, [])
@@ -89,12 +97,13 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
 
   const clearScene = useCallback(() => {
     setAgents([])
-    setSelectedAgentId(null)
+    setSelectedInstanceId(null)
     spawnIndex = 0
+    instanceCounter = 0
   }, [])
 
-  const selectAgent = useCallback((agentId: string | null) => {
-    setSelectedAgentId(agentId)
+  const selectAgent = useCallback((instanceId: string | null) => {
+    setSelectedInstanceId(instanceId)
   }, [])
 
   const updateAgentMeta = useCallback((agentId: string, meta: AgentMeta) => {
@@ -121,6 +130,7 @@ export function RuntimeStateProvider({ children }: { children: ReactNode }) {
     <RuntimeStateContext.Provider
       value={{
         agents,
+        selectedInstanceId,
         selectedAgentId,
         agentMeta,
         pendingDrop,

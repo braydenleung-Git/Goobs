@@ -139,7 +139,6 @@ function WorkshopContent() {
             </div>
 
             <AgentSidebar onSidebarChange={setSidebarOpen} />
-            <AgentChatPanel />
 
             {showConfig && (
               <ConfigModal onClose={() => setShowConfig(false)} />
@@ -156,6 +155,11 @@ function WorkshopContent() {
         ) : (
           <AgentsGrid onAgentCreated={handleAgentCreated} />
         )}
+
+        {/* Keep AgentChatPanel always mounted so chat logs persist across tab switches */}
+        <div className={activeTab !== "workshop" ? "hidden" : ""}>
+          <AgentChatPanel />
+        </div>
       </div>
       {!showLaunch && <ChallengeDock toasts={toasts} onDismissToast={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} sidebarOpen={sidebarOpen} />}
     </div>
