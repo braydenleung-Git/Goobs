@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import { marked } from "marked"
 import { RuntimeStateProvider, useRuntimeState } from "@/components/scene/runtime-state-adapter"
 import { TopNav, type TabId } from "@/components/layout/top-nav"
 import { AgentSidebar } from "@/components/layout/agent-sidebar"
@@ -195,6 +196,16 @@ function ChallengeModal({
   )
 }
 
+function Markdown({ text }: { text: string }) {
+  const html = marked.parse(text, { breaks: true, async: false }) as string
+  return (
+    <div
+      className="prose prose-invert prose-sm max-w-none break-words [&_pre]:bg-black/30 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_code]:bg-white/5 [&_code]:rounded [&_code]:px-1 [&_code]:text-xs [&_p]:leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-4"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
 function AgentChatPanel() {
   const { selectedAgentId, agents, agentMeta, selectAgent, setAgentAnimation } = useRuntimeState()
   const [message, setMessage] = useState("")
@@ -245,20 +256,70 @@ function AgentChatPanel() {
     setSending(true)
     setAgentAnimation(selectedAgentId, "thinking")
 
+    const currentLog = chatLog
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentId: selectedAgentId,
-          messages: [...chatLog, { role: "user", content: userMsg }],
+          messages: [...currentLog, { role: "user", content: userMsg }],
         }),
       })
-      const data = await res.json()
+
+      if (!res.ok || !res.body) {
+        throw new Error("Response error")
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let fullText = ""
+
       setChatLogs((prev) => ({
         ...prev,
-        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: data.content || "(no response)" }],
+        [selectedAgentId]: [...(prev[selectedAgentId] ?? []), { role: "agent", text: "" }],
       }))
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith("data: ")) continue
+          const data = trimmed.slice(6)
+          if (data === "[DONE]") continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (delta) {
+              fullText += delta
+              setChatLogs((prev) => {
+                const msgs = [...(prev[selectedAgentId] ?? [])]
+                const last = msgs[msgs.length - 1]
+                if (last && last.role === "agent") {
+                  msgs[msgs.length - 1] = { ...last, text: fullText }
+                }
+                return { ...prev, [selectedAgentId]: msgs }
+              })
+            }
+          } catch {}
+        }
+      }
+
+      if (!fullText) {
+        setChatLogs((prev) => {
+          const msgs = [...(prev[selectedAgentId] ?? [])]
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], text: "(no response)" }
+          return { ...prev, [selectedAgentId]: msgs }
+        })
+      }
     } catch {
       setChatLogs((prev) => ({
         ...prev,
@@ -267,7 +328,6 @@ function AgentChatPanel() {
     } finally {
     setSending(false)
     setAgentAnimation(selectedAgentId, "idle")
-  }
   }
 
   return (
@@ -338,8 +398,8 @@ function AgentChatPanel() {
             ) : (
               chatLog.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${msg.role === "user" ? "bg-blue/20 text-blue" : "bg-white/5 text-text"}`}>
-                    {msg.text}
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${msg.role === "user" ? "bg-blue/20 text-blue" : "bg-white/5 text-text"}`}>
+                    {msg.role === "user" ? msg.text : <Markdown text={msg.text || "*thinking...*"} />}
                   </div>
                 </div>
               ))
@@ -369,6 +429,7 @@ function AgentChatPanel() {
       </aside>
     </>
   )
+}
 }
 
 export default function WorkshopPage() {
