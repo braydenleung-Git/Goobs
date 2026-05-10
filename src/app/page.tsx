@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { RuntimeStateProvider, useRuntimeState } from "@/components/scene/runtime-state-adapter"
 import { ConfigPanels } from "@/components/workshop/config-panels"
 import { ChallengeRunnerPanel, type RunResult } from "@/components/workshop/challenge-runner-panel"
@@ -16,6 +16,15 @@ const WorkshopScene = dynamic(
 function WorkshopContent() {
   const { spawnAgent, routeAgent, setAgentAnimation } = useRuntimeState()
   const progressRef = useRef<{ refresh: () => void }>(null)
+
+  useEffect(() => {
+    fetch("/api/agents")
+      .then((r) => r.json())
+      .then((agents: Array<{ id: string; isPrebuilt: boolean }>) => {
+        agents.filter((a) => a.isPrebuilt).forEach((a) => spawnAgent(a.id))
+      })
+      .catch(() => {})
+  }, [spawnAgent])
 
   const handleAgentCreated = useCallback((agentId: string) => {
     spawnAgent(agentId)
