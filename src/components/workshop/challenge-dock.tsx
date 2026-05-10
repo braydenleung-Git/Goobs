@@ -95,8 +95,8 @@ export function ChallengeDock({ toasts, onDismissToast, sidebarOpen }: Props) {
   return (
     <>
       <div
-        className="fixed z-30 flex flex-col gap-2 transition-all duration-200 ease-out"
-        style={{ bottom: "1.5rem", left: sidebarOpen ? "17rem" : "1rem" }}
+        className="fixed z-30 flex flex-col gap-2 transition-transform duration-200 ease-out"
+        style={{ bottom: "1.5rem", left: "1rem", transform: `translateX(${sidebarOpen ? "16rem" : "0rem"})` }}
       >
         {toasts.length > 0 && (
           <div className="flex flex-col gap-2 mb-2">

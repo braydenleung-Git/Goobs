@@ -61,6 +61,21 @@ export function FBXModelLoader({
         })
       }
 
+      // Remove duplicate meshes: if both skinned and static meshes exist, hide static ones
+      let hasSkinned = false
+      fbx.traverse((child) => {
+        if (child instanceof THREE.Mesh && (child as any).geometry?.attributes?.skinIndex) {
+          hasSkinned = true
+        }
+      })
+      if (hasSkinned) {
+        fbx.traverse((child) => {
+          if (child instanceof THREE.Mesh && !(child as any).geometry?.attributes?.skinIndex) {
+            child.visible = false
+          }
+        })
+      }
+
       // Store the model
       modelRef.current = fbx
 
